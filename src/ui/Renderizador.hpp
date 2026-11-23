@@ -50,9 +50,23 @@ struct ControlesModulo3 {
   Boton btnAuditarPila;
 };
 
+// Geometria del Modulo 4 (Rutas Urbanas: Grafo, Dijkstra y Bellman-Ford).
+struct ControlesModulo4 {
+  Boton btnFijarOrigen;
+  Boton btnFijarDestino;
+  Boton btnIntercambiar;
+  Boton btnModoBonif;
+  Boton btnModoPositivo;
+  Boton btnModoCicloNeg;
+  Boton btnDijkstra;
+  Boton btnBellmanFord;
+  float radioNodo = 24.0f;
+};
+
 ControlesModulo1 obtenerControlesModulo1(estado::EstadoApp& app);
 ControlesModulo2 obtenerControlesModulo2(estado::EstadoApp& app);
 ControlesModulo3 obtenerControlesModulo3(estado::EstadoApp& app);
+ControlesModulo4 obtenerControlesModulo4(const estado::EstadoApp& app);
 
 void renderizarAplicacion(estado::EstadoApp& app, float ratonX, float ratonY);
 

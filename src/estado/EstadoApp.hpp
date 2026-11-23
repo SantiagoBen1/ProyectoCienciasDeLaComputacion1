@@ -26,19 +26,16 @@ struct EstadoModulo2 {
   bool focoConsulta = false;
   bool animarPasos = true;
 
-  // Animacion paso a paso de Merge Sort.
   bool animacionActiva = false;
   std::vector<algoritmos::PasoMerge> pasosMerge;
   std::size_t indicePasoActual = 0;
   int contadorCuadros = 0;
   std::vector<int> idsOrdenadosDestino;
 
-  // Trazabilidad antes/despues del ordenamiento.
   std::vector<int> snapshotAntes;
   std::vector<int> snapshotDespues;
   bool tieneSnapshots = false;
 
-  // Resultados y contraste de comparaciones O(log n) vs O(n).
   int filaEncontrada = -1;
   std::string ultimoMetodo = "Ninguno";
   std::string ultimoObjetivo;
@@ -67,6 +64,17 @@ struct EstadoModulo3 {
   bool auditoriaActiva = false;
   std::string resumenAuditoria;
   std::string ultimoDeshecho;
+};
+
+// Estado operativo del Modulo 4 (Rutas Urbanas: Dijkstra y Bellman-Ford).
+struct EstadoModulo4 {
+  int nodoOrigen = 1;
+  int nodoDestino = 8;
+  bool seleccionandoOrigen = true;
+
+  bool tieneResultado = false;
+  std::string algoritmoUsado = "Ninguno";
+  algoritmos::ResultadoRuta resultado;
 };
 
 // Capa B: Estado persistente en memoria durante toda la sesion.
@@ -103,10 +111,11 @@ struct EstadoApp {
   int siguienteIdEntrega = 1;
   EstadoModulo3 m3;
 
-  // --- Modulo 4: Grafo urbano (datos precargados, vista en Etapa 5) ---
+  // --- Modulo 4: Grafo urbano (Dijkstra y Bellman-Ford) ---
   algoritmos::Grafo grafoUrbano{true};
   std::vector<dominio::Sector> sectores;
   dominio::ModoRed modoRed = dominio::ModoRed::ConBonificaciones;
+  EstadoModulo4 m4;
 
   // Operaciones generales.
   void inicializarDatosPrecargados(); // Implementado en Bootstrapper.cpp
@@ -137,12 +146,23 @@ struct EstadoApp {
   bool deshacerUltimaEntregaPopM3();
   bool auditarHistorialM3();
 
+  // Operaciones de negocio del Modulo 4.
+  void seleccionarNodoGrafoM4(int idSector, bool forzarDestino = false);
+  void intercambiarOrigenDestinoM4();
+  void cambiarModoRedM4(dominio::ModoRed nuevoModo);
+  bool calcularRutaDijkstraM4();
+  bool calcularRutaBellmanFordM4();
+
   // Consultas de apoyo.
   const dominio::Paquete* obtenerPaquete(int id) const;
   const dominio::Repartidor* obtenerRepartidor(int id) const;
   const dominio::RegistroEntrega* obtenerEntrega(int idRegistro) const;
+  const dominio::Sector* obtenerSector(int id) const;
+  bool grafoTienePesosNegativos() const;
   std::string formatearPeso(double pesoKg) const;
+  std::string formatearSecuenciaSectores(const std::vector<int>& camino) const;
   static std::string formatearListaIds(const std::vector<int>& ids);
+  static std::string nombreModoRed(dominio::ModoRed modo);
 };
 
 std::string nombreModulo(dominio::ModuloActivo modulo);

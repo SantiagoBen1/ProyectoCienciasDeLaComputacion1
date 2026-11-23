@@ -4,6 +4,7 @@
 #include <cctype>
 #include <iomanip>
 #include <sstream>
+#include <utility>
 
 namespace estado {
 
@@ -60,6 +61,15 @@ std::string nombreModulo(dominio::ModuloActivo modulo) {
     case dominio::ModuloActivo::Bodega:         return "2. Bodega (Sort/Busq)";
     case dominio::ModuloActivo::FlotaYAudi:     return "3. Flota y Auditoria";
     case dominio::ModuloActivo::RutasUrbanas:   return "4. Rutas Urbanas";
+  }
+  return "Desconocido";
+}
+
+std::string EstadoApp::nombreModoRed(dominio::ModoRed modo) {
+  switch (modo) {
+    case dominio::ModoRed::ConBonificaciones: return "Con bonificaciones (-)";
+    case dominio::ModoRed::SoloPositivos:     return "Solo vias positivas (+)";
+    case dominio::ModoRed::CicloNegativoDemo: return "Ciclo negativo DEMO";
   }
   return "Desconocido";
 }
@@ -160,9 +170,46 @@ const dominio::RegistroEntrega* EstadoApp::obtenerEntrega(int idRegistro) const 
   return &it->second;
 }
 
+const dominio::Sector* EstadoApp::obtenerSector(int id) const {
+  for (const auto& sec : sectores) {
+    if (sec.id == id) {
+      return &sec;
+    }
+  }
+  return nullptr;
+}
+
+bool EstadoApp::grafoTienePesosNegativos() const {
+  for (const ::Nodo* nodo : grafoUrbano.getNodos()) {
+    for (const auto& arista : nodo->getAdyacentes()) {
+      if (arista.second < 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 std::string EstadoApp::formatearPeso(double pesoKg) const {
   std::ostringstream oss;
   oss << std::fixed << std::setprecision(1) << pesoKg << " kg";
+  return oss.str();
+}
+
+std::string EstadoApp::formatearSecuenciaSectores(
+    const std::vector<int>& camino) const {
+  std::ostringstream oss;
+  for (std::size_t i = 0; i < camino.size(); ++i) {
+    if (i > 0) {
+      oss << " -> ";
+    }
+    const dominio::Sector* sec = obtenerSector(camino[i]);
+    if (sec != nullptr) {
+      oss << "(" << sec->id << ") " << sec->codigoCorto;
+    } else {
+      oss << camino[i];
+    }
+  }
   return oss.str();
 }
 
@@ -640,7 +687,6 @@ bool EstadoApp::eliminarRepartidorPorIdM3() {
   const std::string nombreElim =
       repPrev != nullptr ? repPrev->nombre : ("ID #" + std::to_string(id));
 
-  // Llamada directa a algoritmos::ListaEnlazada::eliminarNodo (libera memoria).
   if (!listaRepartidores.eliminarNodo(id)) {
     registrarLog(dominio::NivelLog::Alerta,
                  "Repartidor #" + std::to_string(id) + " inexistente", antes,
@@ -695,7 +741,8 @@ bool EstadoApp::registrarEntregaPushM3() {
     const int idRep = reps[static_cast<std::size_t>(reg.idRegistro - 1) %
                            reps.size()];
     const dominio::Repartidor* rep = obtenerRepartidor(idRep);
-    reg.repartidor = rep != nullptr ? rep->nombre : ("Rep #" + std::to_string(idRep));
+    reg.repartidor =
+        rep != nullptr ? rep->nombre : ("Rep #" + std::to_string(idRep));
   } else {
     reg.repartidor = "Sin flota";
   }
@@ -735,8 +782,6 @@ bool EstadoApp::deshacerUltimaEntregaPopM3() {
   }
 
   std::string notaContinuidad;
-  // Continuidad entre Modulo 1 y Modulo 3: si venia de un despacho de colas,
-  // re-encola el paquete en su cola correspondiente.
   if (reg->origenAccion.find("Cola de Prioridad") != std::string::npos) {
     colaPrioridad.encolar(reg->idPaquete, static_cast<int>(reg->prioridad));
     notaContinuidad = " -> devuelto a Cola de Prioridad";
@@ -792,6 +837,152 @@ bool EstadoApp::auditarHistorialM3() {
                "Auditoria LIFO completada (" + std::to_string(idsReg.size()) +
                    " entregas en orden inverso)",
                antes, m3.resumenAuditoria);
+  return true;
+}
+
+// ======================= MODULO 4 =======================
+
+void EstadoApp::seleccionarNodoGrafoM4(int idSector, bool forzarDestino) {
+  const std::string antes = "Origen=(" + std::to_string(m4.nodoOrigen) +
+                            "), Destino=(" + std::to_string(m4.nodoDestino) +
+                            ")";
+  if (forzarDestino || !m4.seleccionandoOrigen) {
+    m4.nodoDestino = idSector;
+    if (!forzarDestino) {
+      m4.seleccionandoOrigen = true;
+    }
+  } else {
+    m4.nodoOrigen = idSector;
+    m4.seleccionandoOrigen = false;
+  }
+
+  m4.tieneResultado = false;
+  m4.resultado = algoritmos::ResultadoRuta{};
+
+  const dominio::Sector* secO = obtenerSector(m4.nodoOrigen);
+  const dominio::Sector* secD = obtenerSector(m4.nodoDestino);
+  const std::string nomO = secO != nullptr ? secO->nombre : std::to_string(m4.nodoOrigen);
+  const std::string nomD = secD != nullptr ? secD->nombre : std::to_string(m4.nodoDestino);
+
+  registrarLog(dominio::NivelLog::Info, "Seleccion de sectores en grafo",
+               antes,
+               "Origen=(" + std::to_string(m4.nodoOrigen) + ") " + nomO +
+                   " -> Destino=(" + std::to_string(m4.nodoDestino) + ") " +
+                   nomD);
+}
+
+void EstadoApp::intercambiarOrigenDestinoM4() {
+  const std::string antes = "Origen=(" + std::to_string(m4.nodoOrigen) +
+                            "), Destino=(" + std::to_string(m4.nodoDestino) +
+                            ")";
+  std::swap(m4.nodoOrigen, m4.nodoDestino);
+  m4.tieneResultado = false;
+  m4.resultado = algoritmos::ResultadoRuta{};
+  registrarLog(dominio::NivelLog::Info, "Origen y destino intercambiados",
+               antes,
+               "Origen=(" + std::to_string(m4.nodoOrigen) + "), Destino=(" +
+                   std::to_string(m4.nodoDestino) + ")");
+}
+
+void EstadoApp::cambiarModoRedM4(dominio::ModoRed nuevoModo) {
+  if (modoRed == nuevoModo) {
+    return;
+  }
+  const std::string antes = "Red: " + nombreModoRed(modoRed);
+  construirAristasGrafoSegunModo(nuevoModo);
+  m4.tieneResultado = false;
+  m4.resultado = algoritmos::ResultadoRuta{};
+
+  std::string nota;
+  if (nuevoModo == dominio::ModoRed::SoloPositivos) {
+    nota = "Todas las vias tienen peso >= 0 (apto para Dijkstra y Bellman-Ford).";
+  } else if (nuevoModo == dominio::ModoRed::ConBonificaciones) {
+    nota = "Vias 2->4 (-2) y 3->5 (-3) activas sin ciclo negativo (use Bellman-Ford).";
+  } else {
+    nota = "Agregada arista 4->2 (-2): cierra ciclo negativo 2->4->2 (costo -4).";
+  }
+
+  registrarLog(nuevoModo == dominio::ModoRed::CicloNegativoDemo
+                   ? dominio::NivelLog::Alerta
+                   : dominio::NivelLog::Info,
+               "Modo de red actualizado: " + nombreModoRed(nuevoModo), antes,
+               nota);
+}
+
+bool EstadoApp::calcularRutaDijkstraM4() {
+  const std::string antes =
+      "Red: " + nombreModoRed(modoRed) + " | Consulta: (" +
+      std::to_string(m4.nodoOrigen) + ") -> (" +
+      std::to_string(m4.nodoDestino) + ")";
+
+  // Llamada directa a tu algoritmo algoritmos::Grafo::Dijkstra.
+  m4.algoritmoUsado = "Dijkstra";
+  m4.resultado = grafoUrbano.Dijkstra(m4.nodoOrigen, m4.nodoDestino);
+  m4.tieneResultado = true;
+
+  if (m4.resultado.tienePesosNegativos) {
+    registrarLog(dominio::NivelLog::Alerta,
+                 "Dijkstra bloqueado: existen pesos negativos", antes,
+                 m4.resultado.mensaje);
+    return false;
+  }
+
+  if (m4.resultado.inalcanzable) {
+    registrarLog(dominio::NivelLog::Alerta,
+                 "Dijkstra: destino inalcanzable", antes,
+                 m4.resultado.mensaje);
+    return false;
+  }
+
+  if (!m4.resultado.exito) {
+    registrarLog(dominio::NivelLog::Error, "Error en Dijkstra", antes,
+                 m4.resultado.mensaje);
+    return false;
+  }
+
+  registrarLog(dominio::NivelLog::Exito,
+               "Dijkstra O((V+E) log V): ruta optima hallada", antes,
+               "Costo=" + std::to_string(m4.resultado.costoTotal) + " | " +
+                   formatearSecuenciaSectores(m4.resultado.camino));
+  return true;
+}
+
+bool EstadoApp::calcularRutaBellmanFordM4() {
+  const std::string antes =
+      "Red: " + nombreModoRed(modoRed) + " | Consulta: (" +
+      std::to_string(m4.nodoOrigen) + ") -> (" +
+      std::to_string(m4.nodoDestino) + ")";
+
+  // Llamada directa a tu algoritmo algoritmos::Grafo::BellmanFord.
+  m4.algoritmoUsado = "Bellman-Ford";
+  m4.resultado = grafoUrbano.BellmanFord(m4.nodoOrigen, m4.nodoDestino);
+  m4.tieneResultado = true;
+
+  if (m4.resultado.hayCicloNegativo) {
+    registrarLog(dominio::NivelLog::Error,
+                 "Bellman-Ford O(V*E): CICLO NEGATIVO DETECTADO", antes,
+                 "Nodos afectados (-inf): " +
+                     formatearListaIds(m4.resultado.nodosAfectadosCiclo));
+    return false;
+  }
+
+  if (m4.resultado.inalcanzable) {
+    registrarLog(dominio::NivelLog::Alerta,
+                 "Bellman-Ford: destino inalcanzable", antes,
+                 m4.resultado.mensaje);
+    return false;
+  }
+
+  if (!m4.resultado.exito) {
+    registrarLog(dominio::NivelLog::Error, "Error en Bellman-Ford", antes,
+                 m4.resultado.mensaje);
+    return false;
+  }
+
+  registrarLog(dominio::NivelLog::Exito,
+               "Bellman-Ford O(V*E): ruta optima hallada", antes,
+               "Costo neto=" + std::to_string(m4.resultado.costoTotal) +
+                   " | " + formatearSecuenciaSectores(m4.resultado.camino));
   return true;
 }
 
