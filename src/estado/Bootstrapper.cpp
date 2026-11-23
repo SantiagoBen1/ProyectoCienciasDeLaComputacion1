@@ -114,14 +114,14 @@ void EstadoApp::inicializarDatosPrecargados() {
 
   // 5. Grafo dirigido y ponderado de 8 sectores urbanos.
   sectores = {
-      {1, "Central de Acopio",  "1. Central",    92.0f, 305.0f},
-      {2, "Bodega Norte",       "2. Bod. Norte", 232.0f, 155.0f},
-      {3, "Zona Industrial",    "3. Z. Indust.", 232.0f, 455.0f},
-      {4, "Centro Historico",   "4. Centro",     395.0f, 305.0f},
-      {5, "Sector Residencial", "5. Residenc.",  410.0f, 465.0f},
-      {6, "Terminal Sur",       "6. Term. Sur",  565.0f, 455.0f},
-      {7, "Zona Franca",        "7. Z. Franca",  475.0f, 155.0f},
-      {8, "Parque Logistico",   "8. P. Logist.", 608.0f, 295.0f},
+      {1, "Central de Acopio",  "Central",     78.0f, 320.0f},
+      {2, "Bodega Norte",       "Bod. Norte", 218.0f, 170.0f},
+      {3, "Zona Industrial",    "Z. Indust.", 218.0f, 466.0f},
+      {4, "Centro Historico",   "Centro H.",  374.0f, 320.0f},
+      {5, "Sector Residencial", "Residenc.",  396.0f, 480.0f},
+      {6, "Terminal Sur",       "Term. Sur",  560.0f, 466.0f},
+      {7, "Zona Franca",        "Z. Franca",  472.0f, 170.0f},
+      {8, "Parque Logistico",   "P. Logist.", 606.0f, 308.0f},
   };
   for (const auto& sec : sectores) {
     grafoUrbano.agregarNodo(sec.id);

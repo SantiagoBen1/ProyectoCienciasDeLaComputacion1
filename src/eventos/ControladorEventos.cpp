@@ -3,6 +3,8 @@
 #include "../ui/ComponentesUI.hpp"
 #include "../ui/Renderizador.hpp"
 
+#include <cmath>
+
 namespace eventos {
 
 namespace {
@@ -150,6 +152,57 @@ void procesarEventosModulo3(estado::EstadoApp& app,
   }
 }
 
+void procesarEventosModulo4(estado::EstadoApp& app,
+                            const ui::EntradaUsuario& entrada) {
+  const ui::ControlesModulo4 ctrl = ui::obtenerControlesModulo4(app);
+
+  // Clic directo sobre los circulos de los 8 sectores en el grafo.
+  if (entrada.clicIzq || entrada.clicDer) {
+    for (const auto& sec : app.sectores) {
+      const float d = std::hypot(entrada.ratonX - sec.x, entrada.ratonY - sec.y);
+      if (d <= ctrl.radioNodo + 4.0f) {
+        app.seleccionarNodoGrafoM4(sec.id, entrada.clicDer);
+        return;
+      }
+    }
+  }
+
+  if (ui::clicEnBoton(ctrl.btnFijarOrigen, entrada)) {
+    app.m4.seleccionandoOrigen = true;
+    return;
+  }
+  if (ui::clicEnBoton(ctrl.btnFijarDestino, entrada)) {
+    app.m4.seleccionandoOrigen = false;
+    return;
+  }
+  if (ui::clicEnBoton(ctrl.btnIntercambiar, entrada)) {
+    app.intercambiarOrigenDestinoM4();
+    return;
+  }
+
+  if (ui::clicEnBoton(ctrl.btnModoBonif, entrada)) {
+    app.cambiarModoRedM4(dominio::ModoRed::ConBonificaciones);
+    return;
+  }
+  if (ui::clicEnBoton(ctrl.btnModoPositivo, entrada)) {
+    app.cambiarModoRedM4(dominio::ModoRed::SoloPositivos);
+    return;
+  }
+  if (ui::clicEnBoton(ctrl.btnModoCicloNeg, entrada)) {
+    app.cambiarModoRedM4(dominio::ModoRed::CicloNegativoDemo);
+    return;
+  }
+
+  if (ui::clicEnBoton(ctrl.btnDijkstra, entrada)) {
+    app.calcularRutaDijkstraM4();
+    return;
+  }
+  if (ui::clicEnBoton(ctrl.btnBellmanFord, entrada)) {
+    app.calcularRutaBellmanFordM4();
+    return;
+  }
+}
+
 } // namespace
 
 void procesarEventos(estado::EstadoApp& app,
@@ -189,7 +242,8 @@ void procesarEventos(estado::EstadoApp& app,
     case dominio::ModuloActivo::FlotaYAudi:
       procesarEventosModulo3(app, entrada);
       break;
-    default:
+    case dominio::ModuloActivo::RutasUrbanas:
+      procesarEventosModulo4(app, entrada);
       break;
   }
 }
