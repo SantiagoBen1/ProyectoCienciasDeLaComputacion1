@@ -225,9 +225,13 @@ std::vector<int> mergeSort(const std::vector<int>& valores,
 }
 
 int busquedaBinaria(const std::vector<int>& valores, int objetivo,
-                    int* comparaciones) {
+                    int* comparaciones,
+                    std::vector<int>* historialPivotes) {
   if (comparaciones != nullptr) {
     *comparaciones = 0;
+  }
+  if (historialPivotes != nullptr) {
+    historialPivotes->clear();
   }
   std::size_t inicio = 0;
   std::size_t fin = valores.size();
@@ -236,6 +240,9 @@ int busquedaBinaria(const std::vector<int>& valores, int objetivo,
     const std::size_t mitad = inicio + (fin - inicio) / 2;
     if (comparaciones != nullptr) {
       ++(*comparaciones);
+    }
+    if (historialPivotes != nullptr) {
+      historialPivotes->push_back(valores[mitad]);
     }
     if (valores[mitad] == objetivo) {
       return static_cast<int>(mitad);
@@ -524,6 +531,7 @@ ResultadoRuta Grafo::Dijkstra(int origen, int destino) const {
     if (distanciaActual != distancias[valorActual]) {
       continue;
     }
+    ++res.iteraciones;
     if (valorActual == destino) {
       break;
     }
@@ -541,6 +549,7 @@ ResultadoRuta Grafo::Dijkstra(int origen, int destino) const {
         distancias[vecino] = nuevaDistancia;
         predecesores[vecino] = valorActual;
         pendientes.push({nuevaDistancia, vecino});
+        ++res.relajaciones;
       }
     }
   }
@@ -565,6 +574,20 @@ ResultadoRuta Grafo::Dijkstra(int origen, int destino) const {
   }
   ruta.push_back(origen);
   std::reverse(ruta.begin(), ruta.end());
+
+  for (std::size_t i = 0; i + 1 < ruta.size(); ++i) {
+    const ::Nodo* u = buscarNodo(ruta[i]);
+    int pesoArista = 0;
+    if (u != nullptr) {
+      for (const auto& arista : u->getAdyacentes()) {
+        if (arista.first->getValor() == ruta[i + 1]) {
+          pesoArista = arista.second;
+          break;
+        }
+      }
+    }
+    res.pesosTramos.push_back(pesoArista);
+  }
 
   res.exito = true;
   res.costoTotal = distancias[destino];
@@ -592,6 +615,7 @@ ResultadoRuta Grafo::BellmanFord(int origen, int destino) const {
 
   for (std::size_t i = 1; i < nodos_.size(); ++i) {
     bool huboCambios = false;
+    ++res.iteraciones;
     for (const ::Nodo* nodo : nodos_) {
       const int valorActual = nodo->getValor();
       if (distancias[valorActual] == infinito) {
@@ -606,6 +630,7 @@ ResultadoRuta Grafo::BellmanFord(int origen, int destino) const {
           distancias[vecino] = nuevaDistancia;
           predecesores[vecino] = valorActual;
           huboCambios = true;
+          ++res.relajaciones;
         }
       }
     }
@@ -674,6 +699,20 @@ ResultadoRuta Grafo::BellmanFord(int origen, int destino) const {
   }
   ruta.push_back(origen);
   std::reverse(ruta.begin(), ruta.end());
+
+  for (std::size_t i = 0; i + 1 < ruta.size(); ++i) {
+    const ::Nodo* u = buscarNodo(ruta[i]);
+    int pesoArista = 0;
+    if (u != nullptr) {
+      for (const auto& arista : u->getAdyacentes()) {
+        if (arista.first->getValor() == ruta[i + 1]) {
+          pesoArista = arista.second;
+          break;
+        }
+      }
+    }
+    res.pesosTramos.push_back(pesoArista);
+  }
 
   res.exito = true;
   res.costoTotal = distancias[destino];

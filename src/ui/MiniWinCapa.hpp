@@ -13,6 +13,9 @@ struct EventoTecla {
   bool esEscape = false;
   bool esEnter = false;
   bool esBorrar = false;
+  bool esLimpiar = false;
+  bool esTab = false;
+  bool esF5 = false;
   bool esEspacio = false;
   bool esArriba = false;
   bool esAbajo = false;

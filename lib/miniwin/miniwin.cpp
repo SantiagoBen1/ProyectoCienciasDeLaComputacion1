@@ -226,6 +226,10 @@ int traducirTeclaVirtual(WPARAM wParam) {
     return miniwin::ABAJO;
   case VK_RETURN:
     return miniwin::RETURN;
+  case VK_TAB:
+    return miniwin::TABULADOR;
+  case VK_DELETE:
+    return miniwin::SUPRIMIR;
   case VK_SPACE:
     return miniwin::ESPACIO;
   case VK_F1:
