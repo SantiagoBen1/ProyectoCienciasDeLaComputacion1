@@ -1,3 +1,11 @@
+// ============================================================================
+// Archivo: src/estado/EstadoApp.hpp
+// Capa: Capa B — Dominio y Estado de la Aplicacion (sin dependencias graficas).
+// Proposito: Declara el estado persistente en memoria durante toda la sesion
+//            (EstadoApp), los sub-estados de los 4 modulos y las operaciones
+//            de negocio que conectan la interfaz con las estructuras de Capa A.
+// ============================================================================
+
 #pragma once
 
 #include "Modelos.hpp"
@@ -10,7 +18,7 @@
 
 namespace estado {
 
-// Estado de formulario del Modulo 1 (Cola FIFO y Cola de Prioridad).
+// Estado del formulario de recepcion del Modulo 1 (Cola FIFO y Cola de Prioridad).
 struct FormularioModulo1 {
   std::string idTexto = "113";
   std::string destinoTexto = "CLINICA NORTE";
@@ -20,22 +28,25 @@ struct FormularioModulo1 {
   bool focoDestino = false;
 };
 
-// Estado operativo del Modulo 2 (Bodega: Merge Sort, Binaria y Lineal).
+// Estado operativo del Modulo 2 (Bodega: Merge Sort animado, Busqueda Binaria y Lineal).
 struct EstadoModulo2 {
-  std::string consultaTexto = "109";
+  std::string consultaTexto = "109"; // ID o subcadena de destino a buscar
   bool focoConsulta = false;
-  bool animarPasos = true;
+  bool animarPasos = true;           // Activa/desactiva animacion paso a paso
 
+  // Control de animacion de Merge Sort sobre la tabla de bodega.
   bool animacionActiva = false;
   std::vector<algoritmos::PasoMerge> pasosMerge;
   std::size_t indicePasoActual = 0;
   int contadorCuadros = 0;
   std::vector<int> idsOrdenadosDestino;
 
+  // Instantaneas de trazabilidad Antes / Despues de ordenar.
   std::vector<int> snapshotAntes;
   std::vector<int> snapshotDespues;
   bool tieneSnapshots = false;
 
+  // Metricas de comparacion O(log n) vs O(n) e historial de pivotes binarios.
   int filaEncontrada = -1;
   std::string ultimoMetodo = "Ninguno";
   std::string ultimoObjetivo;
@@ -43,6 +54,7 @@ struct EstadoModulo2 {
   int compBinaria = -1;
   int compLinealId = -1;
   int compLinealDestino = -1;
+  std::vector<int> pivotesBinaria;
 };
 
 // Estado operativo del Modulo 3 (Lista Enlazada de Repartidores y Pila LIFO).
@@ -53,7 +65,7 @@ struct EstadoModulo3 {
   bool focoRepId = false;
   bool focoRepNombre = false;
   bool focoRepZona = false;
-  int ultimoRepResaltado = -1;
+  int ultimoRepResaltado = -1;      // Resalta el nodo recien insertado o clicado
   int siguienteIdRepartidor = 70;
 
   std::string entregaPaqIdTexto = "107";
@@ -61,7 +73,7 @@ struct EstadoModulo3 {
   bool focoEntregaPaqId = false;
   bool focoEntregaDestino = false;
 
-  bool auditoriaActiva = false;
+  bool auditoriaActiva = false;     // Activa numeracion inversa [1], [2], ... en la pila
   std::string resumenAuditoria;
   std::string ultimoDeshecho;
 };
@@ -70,19 +82,22 @@ struct EstadoModulo3 {
 struct EstadoModulo4 {
   int nodoOrigen = 1;
   int nodoDestino = 8;
-  bool seleccionandoOrigen = true;
+  bool seleccionandoOrigen = true;  // Define si el proximo clic izquierdo fija Origen o Destino
 
   bool tieneResultado = false;
   std::string algoritmoUsado = "Ninguno";
   algoritmos::ResultadoRuta resultado;
 };
 
-// Capa B: Estado persistente en memoria durante toda la sesion.
-// Integra directamente las estructuras de src/algoritmos/ sin dependencias graficas.
+// ----------------------------------------------------------------------------
+// EstadoApp: Contenedor central en memoria de toda la sesion operativa.
+// Almacena las estructuras de src/algoritmos/ (que operan sobre IDs enteros)
+// junto con diccionarios de metadatos para mostrar informacion rica en la GUI.
+// ----------------------------------------------------------------------------
 struct EstadoApp {
   dominio::ModuloActivo moduloActivo = dominio::ModuloActivo::ColaYPrioridad;
   dominio::LogTrazabilidad log;
-  bool ejecutando = true;
+  bool ejecutando = true; // Controla la permanencia en el bucle principal
 
   // Catalogo maestro de paquetes indexado por ID unico.
   std::unordered_map<int, dominio::Paquete> paquetesPorId;
@@ -98,8 +113,8 @@ struct EstadoApp {
   int totalDespachados = 0;
 
   // --- Modulo 2: Bodega (Merge Sort, Busqueda Binaria y Lineal) ---
-  std::vector<int> bodegaIds;
-  std::vector<int> bodegaIdsIniciales;
+  std::vector<int> bodegaIds;          // Orden actual visible en la tabla
+  std::vector<int> bodegaIdsIniciales; // Respaldo del desorden inicial del Bootstrapper
   bool bodegaOrdenada = false;
   EstadoModulo2 m2;
 
@@ -111,14 +126,16 @@ struct EstadoApp {
   int siguienteIdEntrega = 1;
   EstadoModulo3 m3;
 
-  // --- Modulo 4: Grafo urbano (Dijkstra y Bellman-Ford) ---
+  // --- Modulo 4: Grafo urbano dirigido y ponderado (Dijkstra y Bellman-Ford) ---
   algoritmos::Grafo grafoUrbano{true};
   std::vector<dominio::Sector> sectores;
   dominio::ModoRed modoRed = dominio::ModoRed::ConBonificaciones;
   EstadoModulo4 m4;
 
-  // Operaciones generales.
+  // --- Operaciones generales del ciclo de vida ---
   void inicializarDatosPrecargados(); // Implementado en Bootstrapper.cpp
+  void reiniciarSimulacion();         // Limpia estructuras dinamicas y recarga Bootstrapper [F5]
+  void rotarFocoModulo();             // Cicla el foco de campos del modulo activo [Tab]
   void construirAristasGrafoSegunModo(dominio::ModoRed modo);
   void registrarLog(dominio::NivelLog nivel, const std::string& titulo,
                     const std::string& antes, const std::string& despues);
@@ -127,11 +144,11 @@ struct EstadoApp {
   void cambiarModulo(dominio::ModuloActivo nuevoModulo);
   void actualizarAnimaciones();
 
-  // Operaciones de negocio del Modulo 1.
+  // --- Operaciones de negocio del Modulo 1 ---
   bool ingresarPedidoM1();
   bool despacharSiguienteM1();
 
-  // Operaciones de negocio del Modulo 2.
+  // --- Operaciones de negocio del Modulo 2 ---
   void ordenarBodegaMergeSortM2();
   void finalizarAnimacionMergeSortM2();
   void restaurarDesordenBodegaM2();
@@ -139,21 +156,21 @@ struct EstadoApp {
   bool buscarLinealIdM2();
   bool buscarLinealDestinoM2();
 
-  // Operaciones de negocio del Modulo 3.
+  // --- Operaciones de negocio del Modulo 3 ---
   bool insertarRepartidorM3(bool alInicio);
   bool eliminarRepartidorPorIdM3();
   bool registrarEntregaPushM3();
   bool deshacerUltimaEntregaPopM3();
   bool auditarHistorialM3();
 
-  // Operaciones de negocio del Modulo 4.
+  // --- Operaciones de negocio del Modulo 4 ---
   void seleccionarNodoGrafoM4(int idSector, bool forzarDestino = false);
   void intercambiarOrigenDestinoM4();
   void cambiarModoRedM4(dominio::ModoRed nuevoModo);
   bool calcularRutaDijkstraM4();
   bool calcularRutaBellmanFordM4();
 
-  // Consultas de apoyo.
+  // --- Consultas y utilidades de formato ---
   const dominio::Paquete* obtenerPaquete(int id) const;
   const dominio::Repartidor* obtenerRepartidor(int id) const;
   const dominio::RegistroEntrega* obtenerEntrega(int idRegistro) const;
@@ -165,6 +182,7 @@ struct EstadoApp {
   static std::string nombreModoRed(dominio::ModoRed modo);
 };
 
+// Devuelve el titulo corto de un modulo para cabeceras y registros de log.
 std::string nombreModulo(dominio::ModuloActivo modulo);
 
 } // namespace estado

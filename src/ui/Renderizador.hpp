@@ -1,3 +1,11 @@
+// ============================================================================
+// Archivo: src/ui/Renderizador.hpp
+// Capa: Capa C — Renderizador de Pantallas y Geometria Compartida.
+// Proposito: Declara las funciones que construyen la geometria de controles de
+//            cada modulo (compartida con ControladorEventos para que los hitboxes
+//            coincidan al pixel con lo dibujado) y la funcion maestra de dibujo.
+// ============================================================================
+
 #pragma once
 
 #include "ComponentesUI.hpp"
@@ -7,10 +15,11 @@
 
 namespace ui {
 
-// Geometria compartida entre Renderizador y ControladorEventos.
+// --- Controles de la barra superior (pestanas 1-4 y boton Reset [F5]) ---
 std::array<Boton, 4> obtenerBotonesPestanas(dominio::ModuloActivo activo);
+Boton obtenerBotonReiniciar();
 
-// Geometria del Modulo 1 (Cola FIFO y Cola de Prioridad).
+// Geometria de controles del Modulo 1 (Cola FIFO y Cola de Prioridad).
 struct ControlesModulo1 {
   CajaTexto cajaId;
   CajaTexto cajaDestino;
@@ -23,7 +32,7 @@ struct ControlesModulo1 {
   Boton btnDespachar;
 };
 
-// Geometria del Modulo 2 (Bodega: Merge Sort, Busqueda Binaria y Lineal).
+// Geometria de controles del Modulo 2 (Bodega: Merge Sort, Busqueda Binaria y Lineal).
 struct ControlesModulo2 {
   Boton btnOrdenarMerge;
   Boton btnToggleAnim;
@@ -34,7 +43,7 @@ struct ControlesModulo2 {
   Boton btnBuscarLinealDest;
 };
 
-// Geometria del Modulo 3 (Lista Enlazada de Repartidores y Pila LIFO).
+// Geometria de controles del Modulo 3 (Lista Enlazada de Repartidores y Pila LIFO).
 struct ControlesModulo3 {
   CajaTexto cajaRepId;
   CajaTexto cajaRepNombre;
@@ -50,7 +59,7 @@ struct ControlesModulo3 {
   Boton btnAuditarPila;
 };
 
-// Geometria del Modulo 4 (Rutas Urbanas: Grafo, Dijkstra y Bellman-Ford).
+// Geometria de controles del Modulo 4 (Rutas Urbanas: Grafo, Dijkstra y Bellman-Ford).
 struct ControlesModulo4 {
   Boton btnFijarOrigen;
   Boton btnFijarDestino;
@@ -60,7 +69,7 @@ struct ControlesModulo4 {
   Boton btnModoCicloNeg;
   Boton btnDijkstra;
   Boton btnBellmanFord;
-  float radioNodo = 24.0f;
+  float radioNodo = 24.0f; // Radio visual y de hit-test de cada circulo del grafo
 };
 
 ControlesModulo1 obtenerControlesModulo1(estado::EstadoApp& app);
@@ -68,6 +77,7 @@ ControlesModulo2 obtenerControlesModulo2(estado::EstadoApp& app);
 ControlesModulo3 obtenerControlesModulo3(estado::EstadoApp& app);
 ControlesModulo4 obtenerControlesModulo4(const estado::EstadoApp& app);
 
+// Dibuja un cuadro completo (fondo, barra superior/guia, modulo activo y barra de estado).
 void renderizarAplicacion(estado::EstadoApp& app, float ratonX, float ratonY);
 
 } // namespace ui

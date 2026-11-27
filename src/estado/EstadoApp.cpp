@@ -1,3 +1,11 @@
+// ============================================================================
+// Archivo: src/estado/EstadoApp.cpp
+// Capa: Capa B — Dominio y Estado de la Aplicacion (sin dependencias graficas).
+// Proposito: Implementa la logica de negocio de los 4 modulos operativos,
+//            validaciones de entrada, manejo de casos borde, sincronizacion
+//            entre modulos y registro de trazabilidad Antes -> Despues.
+// ============================================================================
+
 #include "EstadoApp.hpp"
 
 #include <algorithm>
@@ -10,6 +18,7 @@ namespace estado {
 
 namespace {
 
+// Valida que la cadena contenga solo digitos y represente un entero positivo (1..999999).
 bool parsearEnteroPositivo(const std::string& texto, int& resultado) {
   if (texto.empty()) {
     return false;
@@ -31,6 +40,7 @@ bool parsearEnteroPositivo(const std::string& texto, int& resultado) {
   return true;
 }
 
+// Elimina espacios al inicio y al final de una cadena ingresada por el usuario.
 std::string recortarEspacios(const std::string& s) {
   const std::size_t ini = s.find_first_not_of(' ');
   if (ini == std::string::npos) {
@@ -40,6 +50,7 @@ std::string recortarEspacios(const std::string& s) {
   return s.substr(ini, fin - ini + 1);
 }
 
+// Convierte una cadena a mayusculas para busquedas de texto insensibles a caso.
 std::string aMayusculas(const std::string& s) {
   std::string out = s;
   for (char& c : out) {
@@ -48,6 +59,7 @@ std::string aMayusculas(const std::string& s) {
   return out;
 }
 
+// Genera el resumen compacto del tamano de ambas colas para la barra de log.
 std::string resumenColas(const EstadoApp& app) {
   return "Prioridad=" + std::to_string(app.colaPrioridad.tamano()) +
          ", FIFO=" + std::to_string(app.colaRegular.tamano());
@@ -74,6 +86,7 @@ std::string EstadoApp::nombreModoRed(dominio::ModoRed modo) {
   return "Desconocido";
 }
 
+// Formatea un vector de IDs enteros como "[101, 102, ...]".
 std::string EstadoApp::formatearListaIds(const std::vector<int>& ids) {
   std::ostringstream oss;
   oss << "[";
@@ -87,6 +100,7 @@ std::string EstadoApp::formatearListaIds(const std::vector<int>& ids) {
   return oss.str();
 }
 
+// Actualiza la barra inferior de trazabilidad con severidad y estado Antes/Despues.
 void EstadoApp::registrarLog(dominio::NivelLog nivel, const std::string& titulo,
                              const std::string& antes,
                              const std::string& despues) {
@@ -96,6 +110,7 @@ void EstadoApp::registrarLog(dominio::NivelLog nivel, const std::string& titulo,
   log.despues = despues;
 }
 
+// Quita el foco de todas las cajas de texto de la aplicacion.
 void EstadoApp::limpiarFocos() {
   formM1.focoId = false;
   formM1.focoDestino = false;
@@ -107,12 +122,89 @@ void EstadoApp::limpiarFocos() {
   m3.focoEntregaDestino = false;
 }
 
+// Indica si el usuario esta escribiendo en alguna caja de texto (bloquea atajos 1-4).
 bool EstadoApp::algunCampoEnfocado() const {
   return formM1.focoId || formM1.focoDestino || m2.focoConsulta ||
          m3.focoRepId || m3.focoRepNombre || m3.focoRepZona ||
          m3.focoEntregaPaqId || m3.focoEntregaDestino;
 }
 
+// Rota secuencialmente el foco entre los campos editables del modulo activo (tecla Tab).
+void EstadoApp::rotarFocoModulo() {
+  switch (moduloActivo) {
+    case dominio::ModuloActivo::ColaYPrioridad:
+      if (formM1.focoId) {
+        limpiarFocos();
+        formM1.focoDestino = true;
+      } else {
+        limpiarFocos();
+        formM1.focoId = true;
+      }
+      break;
+    case dominio::ModuloActivo::Bodega:
+      m2.focoConsulta = !m2.focoConsulta;
+      break;
+    case dominio::ModuloActivo::FlotaYAudi:
+      if (m3.focoRepId) {
+        limpiarFocos();
+        m3.focoRepNombre = true;
+      } else if (m3.focoRepNombre) {
+        limpiarFocos();
+        m3.focoRepZona = true;
+      } else if (m3.focoRepZona) {
+        limpiarFocos();
+        m3.focoEntregaPaqId = true;
+      } else if (m3.focoEntregaPaqId) {
+        limpiarFocos();
+        m3.focoEntregaDestino = true;
+      } else {
+        limpiarFocos();
+        m3.focoRepId = true;
+      }
+      break;
+    case dominio::ModuloActivo::RutasUrbanas:
+      limpiarFocos();
+      break;
+  }
+}
+
+// Vacia todas las estructuras dinamicas liberando memoria y recarga los datos
+// precargados del Bootstrapper (accion del boton Reset [F5]).
+void EstadoApp::reiniciarSimulacion() {
+  int tmpVal = 0;
+  int tmpPrio = 0;
+  while (colaRegular.desencolar(tmpVal)) {
+  }
+  while (colaPrioridad.desencolar(tmpVal, tmpPrio)) {
+  }
+  while (pilaEntregas.pop(tmpVal)) {
+  }
+  for (int idRep : listaRepartidores.aVector()) {
+    listaRepartidores.eliminarNodo(idRep);
+  }
+  paquetesPorId.clear();
+  repartidoresPorId.clear();
+  entregasPorId.clear();
+  bodegaIds.clear();
+  bodegaIdsIniciales.clear();
+
+  tieneUltimoDespachado = false;
+  totalDespachados = 0;
+  siguienteIdEntrega = 1;
+  formM1 = FormularioModulo1{};
+  m2 = EstadoModulo2{};
+  m3 = EstadoModulo3{};
+  m4 = EstadoModulo4{};
+
+  inicializarDatosPrecargados();
+  registrarLog(
+      dominio::NivelLog::Info, "Simulacion reiniciada al estado original [F5]",
+      "Estructuras dinamicas limpiadas en RAM.",
+      "Escenario base restaurado: 12 paquetes, 6 en colas, 6 repartidores, 8 "
+      "sectores.");
+}
+
+// Cambia de pestana consolidando cualquier animacion de Merge Sort pendiente.
 void EstadoApp::cambiarModulo(dominio::ModuloActivo nuevoModulo) {
   if (moduloActivo == nuevoModulo) {
     return;
@@ -128,6 +220,7 @@ void EstadoApp::cambiarModulo(dominio::ModuloActivo nuevoModulo) {
                "Vista activa: " + nombreModulo(moduloActivo));
 }
 
+// Avanza la animacion de Merge Sort un paso de mezcla cada 22 cuadros (~350 ms).
 void EstadoApp::actualizarAnimaciones() {
   if (!m2.animacionActiva) {
     return;
@@ -179,6 +272,7 @@ const dominio::Sector* EstadoApp::obtenerSector(int id) const {
   return nullptr;
 }
 
+// Verifica si existe al menos una arista con peso < 0 en el grafo actual.
 bool EstadoApp::grafoTienePesosNegativos() const {
   for (const ::Nodo* nodo : grafoUrbano.getNodos()) {
     for (const auto& arista : nodo->getAdyacentes()) {
@@ -196,6 +290,7 @@ std::string EstadoApp::formatearPeso(double pesoKg) const {
   return oss.str();
 }
 
+// Formatea un camino de IDs como "(1) Central -> (2) Bod. Norte -> ...".
 std::string EstadoApp::formatearSecuenciaSectores(
     const std::vector<int>& camino) const {
   std::ostringstream oss;
@@ -213,8 +308,12 @@ std::string EstadoApp::formatearSecuenciaSectores(
   return oss.str();
 }
 
-// ======================= MODULO 1 =======================
+// ============================================================================
+// MODULO 1: Recepcion y Despacho (Cola FIFO y Cola de Prioridad)
+// ============================================================================
 
+// Valida el formulario, registra el nuevo paquete en el catalogo y bodega,
+// y lo encola en ColaPrioridad (Medico/Urgente) o ColaFIFO (Regular).
 bool EstadoApp::ingresarPedidoM1() {
   const std::string estadoAntes = resumenColas(*this);
 
@@ -250,6 +349,14 @@ bool EstadoApp::ingresarPedidoM1() {
   nuevo.prioridad = formM1.prioridad;
   paquetesPorId[id] = nuevo;
 
+  // Continuidad con Modulo 2: sincroniza el nuevo paquete en el catalogo de bodega
+  // y re-evalua si el arreglo continua ordenado para Busqueda Binaria.
+  if (std::find(bodegaIds.begin(), bodegaIds.end(), id) == bodegaIds.end()) {
+    bodegaIds.push_back(id);
+    bodegaOrdenada = std::is_sorted(bodegaIds.begin(), bodegaIds.end());
+  }
+
+  // Enruta hacia la estructura correspondiente segun el nivel de prioridad.
   std::string colaDestino;
   if (nuevo.prioridad == dominio::Prioridad::Regular) {
     colaRegular.encolar(id);
@@ -261,6 +368,7 @@ bool EstadoApp::ingresarPedidoM1() {
                   ")";
   }
 
+  // Sugiere automaticamente el siguiente ID libre en el campo del formulario.
   if (id >= siguienteIdPaquete) {
     siguienteIdPaquete = id + 1;
   } else {
@@ -278,6 +386,8 @@ bool EstadoApp::ingresarPedidoM1() {
   return true;
 }
 
+// Despacha el siguiente pedido respetando prioridad estricta (ColaPrioridad antes
+// que ColaFIFO) y apila automaticamente el registro en la Pila LIFO del Modulo 3.
 bool EstadoApp::despacharSiguienteM1() {
   const std::string estadoAntes =
       resumenColas(*this) + " | Pila auditoria=" +
@@ -287,6 +397,7 @@ bool EstadoApp::despacharSiguienteM1() {
   int prioExtraida = 0;
   std::string origenCola;
 
+  // Regla de negocio: los envios urgentes/medicos siempre salen antes que la fila FIFO.
   if (!colaPrioridad.estaVacia()) {
     colaPrioridad.desencolar(idDespachado, prioExtraida);
     origenCola = "Cola de Prioridad (P" + std::to_string(prioExtraida) + ")";
@@ -312,6 +423,7 @@ bool EstadoApp::despacharSiguienteM1() {
   origenUltimoDespacho = origenCola;
   ++totalDespachados;
 
+  // Asigna rotativamente (round-robin) un repartidor activo de la ListaEnlazada.
   std::string nombreRep = "Sin flota";
   const auto reps = listaRepartidores.aVector();
   if (!reps.empty()) {
@@ -323,6 +435,7 @@ bool EstadoApp::despacharSiguienteM1() {
     }
   }
 
+  // Continuidad Modulo 1 -> Modulo 3: apila la entrega para auditoria o pop.
   const int idReg = siguienteIdEntrega++;
   dominio::RegistroEntrega reg;
   reg.idRegistro = idReg;
@@ -346,8 +459,12 @@ bool EstadoApp::despacharSiguienteM1() {
   return true;
 }
 
-// ======================= MODULO 2 =======================
+// ============================================================================
+// MODULO 2: Bodega (Merge Sort, Busqueda Binaria y Busqueda Lineal)
+// ============================================================================
 
+// Ejecuta algoritmos::mergeSort sobre bodegaIds, guarda instantaneas Antes/Despues
+// e inicia la animacion paso a paso (o aplica el orden de inmediato si esta desactivada).
 void EstadoApp::ordenarBodegaMergeSortM2() {
   if (m2.animacionActiva) {
     finalizarAnimacionMergeSortM2();
@@ -388,6 +505,7 @@ void EstadoApp::ordenarBodegaMergeSortM2() {
   }
 }
 
+// Completa de inmediato una animacion de Merge Sort en progreso y marca ordenado.
 void EstadoApp::finalizarAnimacionMergeSortM2() {
   if (!m2.animacionActiva) {
     return;
@@ -403,6 +521,7 @@ void EstadoApp::finalizarAnimacionMergeSortM2() {
       "IDs despues: " + formatearListaIds(m2.snapshotDespues));
 }
 
+// Restaura los 12 IDs en el desorden original para repetir demostraciones en vivo.
 void EstadoApp::restaurarDesordenBodegaM2() {
   const std::string antes = formatearListaIds(bodegaIds);
   m2.animacionActiva = false;
@@ -417,6 +536,8 @@ void EstadoApp::restaurarDesordenBodegaM2() {
           " (requiere Merge Sort para Busqueda Binaria)");
 }
 
+// Ejecuta algoritmos::busquedaBinaria por ID exigiendo catalogo ordenado.
+// Registra comparaciones O(log n) y la secuencia de pivotes evaluados.
 bool EstadoApp::buscarBinariaIdM2() {
   if (m2.animacionActiva) {
     finalizarAnimacionMergeSortM2();
@@ -426,6 +547,7 @@ bool EstadoApp::buscarBinariaIdM2() {
       std::string("Catalogo ") + (bodegaOrdenada ? "ORDENADO" : "DESORDENADO") +
       " (" + std::to_string(bodegaIds.size()) + " paquetes)";
 
+  // Precondicion de Busqueda Binaria: bloquea y avisa si el catalogo no esta ordenado.
   if (!bodegaOrdenada) {
     m2.filaEncontrada = -1;
     registrarLog(
@@ -448,8 +570,8 @@ bool EstadoApp::buscarBinariaIdM2() {
   }
 
   int comparaciones = 0;
-  const int indice =
-      algoritmos::busquedaBinaria(bodegaIds, objetivo, &comparaciones);
+  const int indice = algoritmos::busquedaBinaria(
+      bodegaIds, objetivo, &comparaciones, &m2.pivotesBinaria);
 
   m2.ultimoMetodo = "Binaria (ID)";
   m2.ultimoObjetivo = "#" + std::to_string(objetivo);
@@ -461,16 +583,15 @@ bool EstadoApp::buscarBinariaIdM2() {
     const dominio::Paquete* paq =
         obtenerPaquete(bodegaIds[static_cast<std::size_t>(indice)]);
     const std::string detalle =
-        paq != nullptr ? (paq->destino + " | " + formatearPeso(paq->pesoKg) +
-                          " | " + dominio::textoPrioridad(paq->prioridad))
+        paq != nullptr ? (paq->destino + " | " + formatearPeso(paq->pesoKg))
                        : "";
     registrarLog(dominio::NivelLog::Exito,
                  "Busqueda Binaria O(log n): paquete #" +
                      std::to_string(objetivo) + " encontrado",
                  antes + " | Objetivo: #" + std::to_string(objetivo),
-                 "Posicion " + std::to_string(indice + 1) + " en " +
-                     std::to_string(comparaciones) + " comparaciones | " +
-                     detalle);
+                 "Pos " + std::to_string(indice + 1) + " en " +
+                     std::to_string(comparaciones) + " comp. | Pivotes: " +
+                     formatearListaIds(m2.pivotesBinaria) + " | " + detalle);
     return true;
   }
 
@@ -479,10 +600,12 @@ bool EstadoApp::buscarBinariaIdM2() {
                    " inexistente",
                antes + " | Objetivo: #" + std::to_string(objetivo),
                "No encontrado tras " + std::to_string(comparaciones) +
-                   " comparaciones (peor caso logaritmico).");
+                   " comp. | Pivotes evaluados: " +
+                   formatearListaIds(m2.pivotesBinaria));
   return false;
 }
 
+// Ejecuta algoritmos::busquedaLineal por ID (funciona con o sin orden previo) O(n).
 bool EstadoApp::buscarLinealIdM2() {
   if (m2.animacionActiva) {
     finalizarAnimacionMergeSortM2();
@@ -540,6 +663,7 @@ bool EstadoApp::buscarLinealIdM2() {
   return false;
 }
 
+// Recorre secuencialmente el catalogo buscando una subcadena del destino O(n).
 bool EstadoApp::buscarLinealDestinoM2() {
   if (m2.animacionActiva) {
     finalizarAnimacionMergeSortM2();
@@ -598,8 +722,11 @@ bool EstadoApp::buscarLinealDestinoM2() {
   return false;
 }
 
-// ======================= MODULO 3 =======================
+// ============================================================================
+// MODULO 3: Flota (Lista Enlazada) y Auditoria (Pila LIFO)
+// ============================================================================
 
+// Inserta un repartidor en HEAD (alInicio=true) o TAIL (alInicio=false) en O(1).
 bool EstadoApp::insertarRepartidorM3(bool alInicio) {
   const std::string antes =
       "Lista (" + std::to_string(listaRepartidores.tamano()) + "): " +
@@ -643,6 +770,7 @@ bool EstadoApp::insertarRepartidorM3(bool alInicio) {
   }
   m3.ultimoRepResaltado = id;
 
+  // Calcula el proximo ID sugerido en multiplos de 10.
   if (id >= m3.siguienteIdRepartidor) {
     m3.siguienteIdRepartidor = id + 10;
   } else {
@@ -662,6 +790,7 @@ bool EstadoApp::insertarRepartidorM3(bool alInicio) {
   return true;
 }
 
+// Elimina un repartidor por ID recorriendo la ListaEnlazada y liberando su nodo. O(n).
 bool EstadoApp::eliminarRepartidorPorIdM3() {
   const std::string antes =
       "Lista (" + std::to_string(listaRepartidores.tamano()) + "): " +
@@ -709,6 +838,8 @@ bool EstadoApp::eliminarRepartidorPorIdM3() {
   return true;
 }
 
+// Apila manualmente una entrega completada en la Pila LIFO (push O(1)).
+// Si el ID corresponde a un paquete existente, reutiliza su destino y prioridad.
 bool EstadoApp::registrarEntregaPushM3() {
   const std::string antes =
       "Pila LIFO tamano=" + std::to_string(pilaEntregas.tamano());
@@ -760,6 +891,8 @@ bool EstadoApp::registrarEntregaPushM3() {
   return true;
 }
 
+// Deshace el ultimo despacho mediante pop O(1). Si la entrega provino del Modulo 1,
+// re-encola el paquete en su cola original manteniendo coherencia entre modulos.
 bool EstadoApp::deshacerUltimaEntregaPopM3() {
   const std::string antes =
       "Pila LIFO tamano=" + std::to_string(pilaEntregas.tamano());
@@ -781,6 +914,7 @@ bool EstadoApp::deshacerUltimaEntregaPopM3() {
     return true;
   }
 
+  // Continuidad Modulo 3 -> Modulo 1: devuelve despachos revertidos a su cola.
   std::string notaContinuidad;
   if (reg->origenAccion.find("Cola de Prioridad") != std::string::npos) {
     colaPrioridad.encolar(reg->idPaquete, static_cast<int>(reg->prioridad));
@@ -802,6 +936,7 @@ bool EstadoApp::deshacerUltimaEntregaPopM3() {
   return true;
 }
 
+// Recorre la Pila LIFO desde el tope hasta la base (orden cronologico inverso) O(n).
 bool EstadoApp::auditarHistorialM3() {
   const auto idsReg = pilaEntregas.aVector();
   const std::string antes =
@@ -840,8 +975,12 @@ bool EstadoApp::auditarHistorialM3() {
   return true;
 }
 
-// ======================= MODULO 4 =======================
+// ============================================================================
+// MODULO 4: Rutas Urbanas (Grafo Dirigido, Dijkstra y Bellman-Ford)
+// ============================================================================
 
+// Actualiza Origen o Destino al hacer clic sobre un nodo del grafo e invalida
+// el resultado anterior para evitar mostrar una ruta desactualizada.
 void EstadoApp::seleccionarNodoGrafoM4(int idSector, bool forzarDestino) {
   const std::string antes = "Origen=(" + std::to_string(m4.nodoOrigen) +
                             "), Destino=(" + std::to_string(m4.nodoDestino) +
@@ -871,6 +1010,7 @@ void EstadoApp::seleccionarNodoGrafoM4(int idSector, bool forzarDestino) {
                    nomD);
 }
 
+// Invierte Origen <-> Destino (facilita probar destinos inalcanzables como 8 -> 1).
 void EstadoApp::intercambiarOrigenDestinoM4() {
   const std::string antes = "Origen=(" + std::to_string(m4.nodoOrigen) +
                             "), Destino=(" + std::to_string(m4.nodoDestino) +
@@ -884,6 +1024,7 @@ void EstadoApp::intercambiarOrigenDestinoM4() {
                    std::to_string(m4.nodoDestino) + ")");
 }
 
+// Reconstruye las aristas del grafo segun el escenario vial elegido.
 void EstadoApp::cambiarModoRedM4(dominio::ModoRed nuevoModo) {
   if (modoRed == nuevoModo) {
     return;
@@ -909,13 +1050,13 @@ void EstadoApp::cambiarModoRedM4(dominio::ModoRed nuevoModo) {
                nota);
 }
 
+// Invoca algoritmos::Grafo::Dijkstra y traduce el resultado a la UI y barra de log.
 bool EstadoApp::calcularRutaDijkstraM4() {
   const std::string antes =
       "Red: " + nombreModoRed(modoRed) + " | Consulta: (" +
       std::to_string(m4.nodoOrigen) + ") -> (" +
       std::to_string(m4.nodoDestino) + ")";
 
-  // Llamada directa a tu algoritmo algoritmos::Grafo::Dijkstra.
   m4.algoritmoUsado = "Dijkstra";
   m4.resultado = grafoUrbano.Dijkstra(m4.nodoOrigen, m4.nodoDestino);
   m4.tieneResultado = true;
@@ -947,13 +1088,13 @@ bool EstadoApp::calcularRutaDijkstraM4() {
   return true;
 }
 
+// Invoca algoritmos::Grafo::BellmanFord y traduce ruta o ciclo negativo a la UI.
 bool EstadoApp::calcularRutaBellmanFordM4() {
   const std::string antes =
       "Red: " + nombreModoRed(modoRed) + " | Consulta: (" +
       std::to_string(m4.nodoOrigen) + ") -> (" +
       std::to_string(m4.nodoDestino) + ")";
 
-  // Llamada directa a tu algoritmo algoritmos::Grafo::BellmanFord.
   m4.algoritmoUsado = "Bellman-Ford";
   m4.resultado = grafoUrbano.BellmanFord(m4.nodoOrigen, m4.nodoDestino);
   m4.tieneResultado = true;

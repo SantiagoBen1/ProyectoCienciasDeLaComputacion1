@@ -1,23 +1,28 @@
+// ============================================================================
+// Archivo: src/algoritmos/NodoLista.hpp
+// Capa: Capa A — Logica y Estructuras de Datos (sin dependencias graficas).
+// Proposito: Define el nodo simplemente enlazado (class nodo) usado por las
+//            estructuras lineales dinamicas: ColaFIFO, ListaEnlazada y Pila.
+//            Renombrado desde nodo.hpp para evitar colision con Nodo.hpp en Windows.
+// ============================================================================
+
 #pragma once
 
-// Renombrado desde nodo.hpp -> NodoLista.hpp para evitar colision de nombres
-// con Nodo.hpp en sistemas de archivos insensibles a mayusculas (Windows).
-// Se removio #include <bits/stdc++.h> y using namespace std para compatibilidad
-// estandar C++17 (g++ / MSVC). Logica de la clase nodo sin cambios.
-
+// Nodo basico para estructuras enlazadas simples con valor entero (ID).
 class nodo {
 private:
-  int dato;
-  nodo* next;
+  int dato;   // Valor almacenado (identificador de paquete, repartidor o entrega)
+  nodo *next; // Puntero al siguiente nodo en la secuencia (nullptr al final)
 
 public:
+  // Inicializa el nodo con su valor y puntero siguiente en nullptr.
   nodo(int dato);
 
   // Getters
   int getDato();
-  nodo* getNext();
+  nodo *getNext();
 
   // Setters
   void setDato(int dato);
-  void setNext(nodo* nxt);
+  void setNext(nodo *nxt);
 };
