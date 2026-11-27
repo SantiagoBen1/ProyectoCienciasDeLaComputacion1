@@ -1,3 +1,12 @@
+// ============================================================================
+// Archivo: src/ui/ComponentesUI.cpp
+// Capa: Capa C — Biblioteca de Componentes Reutilizables de Interfaz.
+// Proposito: Implementa el renderizado y manejo de eventos de todos los
+//            componentes graficos (paneles con sombra, botones con hover,
+//            cajas de texto con botones [<] y [X], flechas vectoriales, tablas
+//            con scroll automatico y barra inferior de trazabilidad).
+// ============================================================================
+
 #include "ComponentesUI.hpp"
 
 #include <cmath>
@@ -6,9 +15,11 @@ namespace ui {
 
 namespace {
 
+// Metricas de la fuente monoespaciada Consolas (-14px) configurada en miniwin.cpp.
 constexpr float ANCHO_CARACTER = 8.0f;
 constexpr float ALTO_TEXTO = 14.0f;
 
+// Resuelve el color de fondo del boton segun su estilo, habilitacion, foco y hover.
 ColorRGB fondoBoton(const Boton& btn, bool hover) {
   if (!btn.habilitado) {
     return paleta::DESHABILITADO;
@@ -37,6 +48,7 @@ ColorRGB fondoBoton(const Boton& btn, bool hover) {
 
 } // namespace
 
+// Recorta una cadena a 'maxChars' caracteres agregando ".." si excede el limite.
 std::string recortarTexto(const std::string& texto, std::size_t maxChars) {
   if (texto.size() <= maxChars) {
     return texto;
@@ -47,6 +59,7 @@ std::string recortarTexto(const std::string& texto, std::size_t maxChars) {
   return texto.substr(0, maxChars - 2) + "..";
 }
 
+// Calcula cuantos caracteres caben en 'maxAnchoPx' y recorta el texto para evitar desbordes.
 std::string recortarTextoPorAncho(const std::string& texto, float maxAnchoPx) {
   if (maxAnchoPx <= 4.0f) {
     return "";
@@ -60,6 +73,7 @@ float anchoTextoAprox(const std::string& texto) {
   return static_cast<float>(texto.size()) * ANCHO_CARACTER;
 }
 
+// Dibuja texto garantizando que nunca sobresalga del ancho maximo permitido.
 void dibujarTextoAcotado(float x, float y, float maxAnchoPx,
                          const std::string& texto) {
   if (maxAnchoPx <= 4.0f || texto.empty()) {
@@ -68,9 +82,11 @@ void dibujarTextoAcotado(float x, float y, float maxAnchoPx,
   dibujarTexto(x, y, recortarTextoPorAncho(texto, maxAnchoPx));
 }
 
+// Dibuja un contenedor de panel con sombra sutil, cabecera opcional con barra
+// de acento cyan a la izquierda y borde perimetral.
 void dibujarPanel(const RectanguloUI& rect, const std::string& titulo,
                   const ColorRGB& fondo) {
-  // Sombra sutil inferior-derecha para dar profundidad visual
+  // Sombra sutil inferior-derecha para dar profundidad visual.
   establecerColor(paleta::PANEL_SOMBRA);
   dibujarRectanguloLleno(rect.x + 2.0f, rect.y + 2.0f, rect.x + rect.w + 2.0f,
                          rect.y + rect.h + 2.0f);
@@ -83,7 +99,7 @@ void dibujarPanel(const RectanguloUI& rect, const std::string& titulo,
     establecerColor(paleta::PANEL_HEADER);
     dibujarRectanguloLleno(rect.x, rect.y, rect.x + rect.w,
                            rect.y + altoCabecera);
-    // Barra lateral de acento en cabecera
+    // Franja lateral cyan de acento en la cabecera.
     establecerColor(paleta::CYAN);
     dibujarRectanguloLleno(rect.x, rect.y, rect.x + 4.0f,
                            rect.y + altoCabecera);
@@ -98,6 +114,7 @@ void dibujarPanel(const RectanguloUI& rect, const std::string& titulo,
   dibujarRectangulo(rect.x, rect.y, rect.x + rect.w, rect.y + rect.h);
 }
 
+// Dibuja una pildora/etiqueta compacta con texto centrado y recorte automatico.
 void dibujarInsignia(float x, float y, float w, float h,
                      const std::string& texto, const ColorRGB& fondo,
                      const ColorRGB& colorTexto) {
@@ -113,6 +130,8 @@ void dibujarInsignia(float x, float y, float w, float h,
   dibujarTexto(tx < x + 3.0f ? x + 3.0f : tx, ty, ajustado);
 }
 
+// Dibuja un boton con feedback de hover, indicador de estado activo (linea
+// inferior en pestanas o barra lateral en toggles) y texto centrado.
 void dibujarBoton(const Boton& btn, float ratonX, float ratonY) {
   const bool hover = btn.habilitado && btn.rect.contiene(ratonX, ratonY);
   const ColorRGB colFondo = fondoBoton(btn, hover);
@@ -152,23 +171,28 @@ void dibujarBoton(const Boton& btn, float ratonX, float ratonY) {
   dibujarTexto(tx < btn.rect.x + 5.0f ? btn.rect.x + 5.0f : tx, ty, ajustado);
 }
 
+// Detecta si se produjo un clic izquierdo valido sobre un boton habilitado.
 bool clicEnBoton(const Boton& btn, const EntradaUsuario& entrada) {
   return btn.habilitado && entrada.clicIzq &&
          btn.rect.contiene(entrada.ratonX, entrada.ratonY);
 }
 
+// Geometria del mini-boton [X] ubicado en el borde derecho de una CajaTexto.
 RectanguloUI rectBotonLimpiarCaja(const CajaTexto& caja) {
   const float anchoBtn = 22.0f;
   return {caja.rect.x + caja.rect.w - anchoBtn, caja.rect.y, anchoBtn,
           caja.rect.h};
 }
 
+// Geometria del mini-boton [<] ubicado inmediatamente a la izquierda de [X].
 RectanguloUI rectBotonBorrarCaja(const CajaTexto& caja) {
   const float anchoBtn = 22.0f;
   return {caja.rect.x + caja.rect.w - anchoBtn * 2.0f, caja.rect.y, anchoBtn,
           caja.rect.h};
 }
 
+// Dibuja la etiqueta, el campo de texto (con placeholder o cursor '|') y los
+// botones integrados [<] (borrar 1 caracter) y [X] (vaciar campo).
 void dibujarCajaTexto(const CajaTexto& caja, float ratonX, float ratonY) {
   const bool enfocada = (caja.enfocada != nullptr && *caja.enfocada);
   const bool hoverCaja = caja.rect.contiene(ratonX, ratonY);
@@ -208,6 +232,7 @@ void dibujarCajaTexto(const CajaTexto& caja, float ratonX, float ratonY) {
                  caja.rect.y + (caja.rect.h - ALTO_TEXTO) * 0.5f,
                  recortarTexto(placeholder, maxVisibles));
   } else {
+    // Muestra los ultimos caracteres visibles junto con el cursor '|' si esta enfocada.
     std::string textoMostrado = valorReal;
     if (enfocada) {
       textoMostrado += "|";
@@ -221,7 +246,7 @@ void dibujarCajaTexto(const CajaTexto& caja, float ratonX, float ratonY) {
                  textoMostrado);
   }
 
-  // Boton [<] para borrar 1 caracter
+  // Boton [<] para borrar 1 caracter con el raton.
   const bool hoverBorrar = rBorrar.contiene(ratonX, ratonY);
   establecerColor(hoverBorrar ? paleta::SECUNDARIO_HOVER : paleta::SECUNDARIO);
   dibujarRectanguloLleno(rBorrar.x, rBorrar.y, rBorrar.x + rBorrar.w,
@@ -233,7 +258,7 @@ void dibujarCajaTexto(const CajaTexto& caja, float ratonX, float ratonY) {
   dibujarTexto(rBorrar.x + 7.0f,
                rBorrar.y + (rBorrar.h - ALTO_TEXTO) * 0.5f, "<");
 
-  // Boton [X] para vaciar toda la caja de un solo clic
+  // Boton [X] para vaciar toda la caja de un solo clic.
   const bool hoverLimpiar = rLimpiar.contiene(ratonX, ratonY);
   establecerColor(hoverLimpiar ? paleta::PELIGRO_HOVER : paleta::PELIGRO_FONDO);
   dibujarRectanguloLleno(rLimpiar.x, rLimpiar.y, rLimpiar.x + rLimpiar.w,
@@ -246,6 +271,7 @@ void dibujarCajaTexto(const CajaTexto& caja, float ratonX, float ratonY) {
                rLimpiar.y + (rLimpiar.h - ALTO_TEXTO) * 0.5f, "X");
 }
 
+// Procesa foco, clic en [<]/[X], clic derecho para limpiar y escritura por teclado.
 bool manejarEventoCajaTexto(const CajaTexto& caja,
                             const EntradaUsuario& entrada) {
   if (caja.valor == nullptr || caja.enfocada == nullptr) {
@@ -256,6 +282,7 @@ bool manejarEventoCajaTexto(const CajaTexto& caja,
   const RectanguloUI rBorrar = rectBotonBorrarCaja(caja);
   const RectanguloUI rLimpiar = rectBotonLimpiarCaja(caja);
 
+  // Clic derecho sobre [<] o [X] vacia rapidamente todo el campo.
   if (entrada.clicDer &&
       (rBorrar.contiene(entrada.ratonX, entrada.ratonY) ||
        rLimpiar.contiene(entrada.ratonX, entrada.ratonY))) {
@@ -291,6 +318,7 @@ bool manejarEventoCajaTexto(const CajaTexto& caja,
     return false;
   }
 
+  // Aplica teclas de edicion (Supr, Borrar/Izquierda y caracteres permitidos).
   for (const EventoTecla& ev : entrada.teclas) {
     if (ev.esLimpiar) {
       if (!caja.valor->empty()) {
@@ -328,6 +356,8 @@ bool manejarEventoCajaTexto(const CajaTexto& caja,
   return huboCambio;
 }
 
+// Dibuja una flecha dirigida de (x1, y1) a (x2, y2) con punta triangular.
+// Cuando 'gruesa' es true, traza dos lineas paralelas desplazadas +-1px en la normal.
 void dibujarFlecha(float x1, float y1, float x2, float y2, const ColorRGB& col,
                    float tamPunta, bool gruesa) {
   establecerColor(col);
@@ -347,6 +377,7 @@ void dibujarFlecha(float x1, float y1, float x2, float y2, const ColorRGB& col,
     dibujarLinea(x1 - nx, y1 - ny, x2 - nx, y2 - ny);
   }
 
+  // Calcula los dos vertices traseros de la punta rotando +-0.45 rad (~26 grados).
   const float angulo = std::atan2(dy, dx);
   const float apertura = 0.45f; // ~26 grados
   const float p1x = x2 - tamPunta * std::cos(angulo - apertura);
@@ -359,6 +390,8 @@ void dibujarFlecha(float x1, float y1, float x2, float y2, const ColorRGB& col,
   dibujarLinea(p1x, p1y, p2x, p2y);
 }
 
+// Renderiza una tabla completa con cabecera, alternancia de filas, hover,
+// ventana deslizante automatica, resaltado de rangos Merge Sort y fila encontrada.
 void dibujarTabla(const TablaDatos& tabla, float ratonX, float ratonY) {
   const float altoCabecera = 26.0f;
 
@@ -367,7 +400,7 @@ void dibujarTabla(const TablaDatos& tabla, float ratonX, float ratonY) {
                          tabla.rect.x + tabla.rect.w,
                          tabla.rect.y + tabla.rect.h);
 
-  // Cabecera
+  // Cabecera con titulos de columnas en cyan y separadores verticales.
   establecerColor(paleta::PANEL_HEADER);
   dibujarRectanguloLleno(tabla.rect.x, tabla.rect.y,
                          tabla.rect.x + tabla.rect.w,
@@ -385,7 +418,8 @@ void dibujarTabla(const TablaDatos& tabla, float ratonX, float ratonY) {
     cursorX += tabla.columnas[c].ancho;
   }
 
-  // Filas (con ventana deslizante automatica si hay mas filas que el alto visible)
+  // Ventana deslizante: si existen mas filas que el alto visible (p. ej. tras
+  // ingresar nuevos pedidos en Modulo 1), desplaza la vista para mostrar la fila resaltada.
   float cursorY = tabla.rect.y + altoCabecera;
   const int maxFilasVisibles =
       tabla.altoFila > 0.0f
@@ -407,6 +441,7 @@ void dibujarTabla(const TablaDatos& tabla, float ratonX, float ratonY) {
                                 tabla.rect.w - 2.0f, tabla.altoFila};
     const bool hoverFila = rectFila.contiene(ratonX, ratonY);
 
+    // Prioridad de color de fondo: zebra -> hover -> rango Merge Sort -> secundaria -> encontrada.
     ColorRGB fondoFila =
         (r % 2 == 0) ? paleta::FILA_PAR : paleta::FILA_IMPAR;
     if (hoverFila) {
@@ -430,12 +465,14 @@ void dibujarTabla(const TablaDatos& tabla, float ratonX, float ratonY) {
     dibujarRectanguloLleno(tabla.rect.x + 1.0f, cursorY,
                            tabla.rect.x + tabla.rect.w - 1.0f,
                            cursorY + tabla.altoFila);
+    // Franja vertical verde en el borde izquierdo de la fila encontrada/seleccionada.
     if (idx == tabla.filaResaltada) {
       establecerColor(paleta::EXITO);
       dibujarRectanguloLleno(tabla.rect.x + 1.0f, cursorY,
                              tabla.rect.x + 5.0f, cursorY + tabla.altoFila);
     }
 
+    // Dibuja cada celda aplicando color semantico a ID (col 1) y Prioridad (col 4).
     cursorX = tabla.rect.x;
     for (std::size_t c = 0; c < tabla.columnas.size(); ++c) {
       if (c < tabla.filas[r].size()) {
@@ -474,6 +511,8 @@ void dibujarTabla(const TablaDatos& tabla, float ratonX, float ratonY) {
                     tabla.rect.y + tabla.rect.h);
 }
 
+// Dibuja la barra fija inferior de trazabilidad con insignia de severidad,
+// guia de atajos rapidos y las lineas "Antes" / "Despues" de la ultima accion.
 void dibujarBarraEstado(const dominio::LogTrazabilidad& log) {
   const float y = layout::Y_BARRA_ESTADO;
   const float w = static_cast<float>(layout::ANCHO_VENTANA);
@@ -515,7 +554,7 @@ void dibujarBarraEstado(const dominio::LogTrazabilidad& log) {
   dibujarTextoAcotado(92.0f, y + 11.0f, 560.0f,
                       "TRAZABILIDAD | " + log.titulo);
 
-  // Guia rapida de atajos en la esquina superior derecha de la barra de estado
+  // Guia rapida de atajos de teclado en la esquina superior derecha.
   establecerColor(paleta::TEXTO_SECUNDARIO);
   dibujarTextoAcotado(
       668.0f, y + 11.0f, w - 680.0f,

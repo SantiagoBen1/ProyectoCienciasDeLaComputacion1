@@ -1,3 +1,14 @@
+// ============================================================================
+// Archivo: src/ui/Renderizador.cpp
+// Capa: Capa C — Renderizador de Pantallas de los 4 Modulos.
+// Proposito: Define la disposicion exacta de los controles y dibuja la barra
+//            superior con KPIs globales, la guia contextual y las 4 vistas:
+//              - Modulo 1: Tarjetas de Cola de Prioridad y Cola FIFO
+//              - Modulo 2: Tabla de bodega, animacion Merge Sort y barras O(log n) vs O(n)
+//              - Modulo 3: Nodos/flechas de Lista Enlazada y tubo vertical de Pila LIFO
+//              - Modulo 4: Grafo dirigido de 8 sectores, aristas paralelas e inspector
+// ============================================================================
+
 #include "Renderizador.hpp"
 
 #include <algorithm>
@@ -7,6 +18,11 @@
 
 namespace ui {
 
+// ============================================================================
+// Constructores de geometria compartida entre Renderizador y ControladorEventos
+// ============================================================================
+
+// Retorna los 4 botones de pestana superiores marcando como activo el modulo actual.
 std::array<Boton, 4> obtenerBotonesPestanas(dominio::ModuloActivo activo) {
   const float y = 9.0f;
   const float h = 34.0f;
@@ -34,6 +50,7 @@ std::array<Boton, 4> obtenerBotonesPestanas(dominio::ModuloActivo activo) {
   }};
 }
 
+// Boton global en la barra superior para reiniciar el estado al Bootstrapper.
 Boton obtenerBotonReiniciar() {
   return {{244.0f, 11.0f, 98.0f, 30.0f},
           "Reset [F5]",
@@ -42,6 +59,7 @@ Boton obtenerBotonReiniciar() {
           false};
 }
 
+// Construye la geometria del panel derecho de recepcion y despacho del Modulo 1.
 ControlesModulo1 obtenerControlesModulo1(estado::EstadoApp& app) {
   const float px = 812.0f;
   const float ancho = 318.0f;
@@ -107,6 +125,7 @@ ControlesModulo1 obtenerControlesModulo1(estado::EstadoApp& app) {
   return c;
 }
 
+// Construye la geometria del panel derecho de ordenamiento y busqueda del Modulo 2.
 ControlesModulo2 obtenerControlesModulo2(estado::EstadoApp& app) {
   const float px = 788.0f;
   const float ancho = 342.0f;
@@ -140,6 +159,7 @@ ControlesModulo2 obtenerControlesModulo2(estado::EstadoApp& app) {
                     false,
                     20};
 
+  // El estilo de Busqueda Binaria cambia a Alerta mientras el catalogo siga desordenado.
   c.btnBuscarBinaria = {{px, 326.0f, ancho, 32.0f},
                         "Busqueda Binaria por ID [O(log n)]",
                         app.bodegaOrdenada ? EstiloBoton::Primario
@@ -162,6 +182,7 @@ ControlesModulo2 obtenerControlesModulo2(estado::EstadoApp& app) {
   return c;
 }
 
+// Construye la geometria de los formularios de Lista Enlazada (izq) y Pila LIFO (der).
 ControlesModulo3 obtenerControlesModulo3(estado::EstadoApp& app) {
   ControlesModulo3 c;
 
@@ -235,6 +256,7 @@ ControlesModulo3 obtenerControlesModulo3(estado::EstadoApp& app) {
   return c;
 }
 
+// Construye los controles del panel derecho de enrutamiento del Modulo 4.
 ControlesModulo4 obtenerControlesModulo4(const estado::EstadoApp& app) {
   const float px = 798.0f;
   const float ancho = 332.0f;
@@ -272,6 +294,7 @@ ControlesModulo4 obtenerControlesModulo4(const estado::EstadoApp& app) {
                        true,
                        app.modoRed == dominio::ModoRed::CicloNegativoDemo};
 
+  // Resalta el boton de Dijkstra en ambar cuando hay aristas negativas activas.
   const bool hayNeg = app.grafoTienePesosNegativos();
   c.btnDijkstra = {{px, 362.0f, ancho, 32.0f},
                    "Calcular ruta con Dijkstra",
@@ -289,6 +312,7 @@ ControlesModulo4 obtenerControlesModulo4(const estado::EstadoApp& app) {
 
 namespace {
 
+// Asocia cada prioridad con su color semantico (Rojo=Medico, Ambar=Urgente, Azul=Regular).
 ColorRGB colorPrioridad(dominio::Prioridad p) {
   switch (p) {
     case dominio::Prioridad::Medico:  return paleta::PELIGRO;
@@ -297,6 +321,10 @@ ColorRGB colorPrioridad(dominio::Prioridad p) {
   }
   return paleta::PRIMARIO;
 }
+
+// ============================================================================
+// Marco Superior: Navegacion, Reset [F5], Sub-barra Guia y KPIs en Vivo
+// ============================================================================
 
 void dibujarBarraSuperior(const estado::EstadoApp& app, float ratonX,
                           float ratonY) {
@@ -320,7 +348,7 @@ void dibujarBarraSuperior(const estado::EstadoApp& app, float ratonX,
   dibujarLinea(0.0f, layout::ALTO_BARRA_SUPERIOR, w,
                layout::ALTO_BARRA_SUPERIOR);
 
-  // Sub-barra contextual de guia paso a paso + indicadores globales en vivo
+  // Sub-barra contextual de guia paso a paso + indicadores globales en vivo.
   const float gy = layout::ALTO_BARRA_SUPERIOR;
   const float gh = layout::ALTO_BARRA_GUIA;
   establecerColor(paleta::PANEL_OSCURO);
@@ -357,7 +385,7 @@ void dibujarBarraSuperior(const estado::EstadoApp& app, float ratonX,
   establecerColor(paleta::TEXTO_PRINCIPAL);
   dibujarTextoAcotado(76.0f, gy + 9.0f, 740.0f, guiaModulo);
 
-  // Pildoras de estado global en tiempo real a la derecha
+  // Pildoras de estado global en tiempo real (evidencian continuidad entre modulos).
   const std::string kpiPrio =
       "Prio:" + std::to_string(app.colaPrioridad.tamano());
   const std::string kpiFifo =
@@ -381,6 +409,11 @@ void dibujarBarraSuperior(const estado::EstadoApp& app, float ratonX,
                   paleta::EXITO_FONDO);
 }
 
+// ============================================================================
+// Renderizado del Modulo 1: Cola de Prioridad y Cola Regular FIFO
+// ============================================================================
+
+// Dibuja una tarjeta individual de paquete con franja de prioridad, hover e insignia SALE YA.
 void dibujarTarjetaPaquete(float x, float y, float w, float h,
                            const dominio::Paquete& paq,
                            const std::string& pesoTxt,
@@ -423,6 +456,7 @@ void dibujarTarjetaPaquete(float x, float y, float w, float h,
   dibujarRectangulo(x, y, x + w, y + h);
 }
 
+// Renderiza hasta 8 tarjetas (2 filas de 4) con flechas apuntando hacia el frente de cola.
 void dibujarBloqueColaTarjetas(const RectanguloUI& panel,
                                const std::vector<int>& ids,
                                const estado::EstadoApp& app,
@@ -476,6 +510,7 @@ void dibujarBloqueColaTarjetas(const RectanguloUI& panel,
                           resaltarPrimeroComoSiguiente && i == 0, ratonX,
                           ratonY);
 
+    // Flecha de derecha a izquierda indicando avance hacia el frente de salida.
     if (col > 0) {
       dibujarFlecha(cx - 2.0f, cy + cardH * 0.5f, cx - gapX + 2.0f,
                     cy + cardH * 0.5f, paleta::TEXTO_SECUNDARIO, 6.0f, false);
@@ -494,6 +529,7 @@ void dibujarModulo1(estado::EstadoApp& app, float ratonX, float ratonY) {
   const float panelIzqX = layout::MARGEN;
   const float panelIzqW = 770.0f;
 
+  // Panel superior izquierdo: Cola de Prioridad (Min-Heap).
   const RectanguloUI panelPrio{panelIzqX, layout::AREA_Y_INICIO, panelIzqW,
                                260.0f};
   dibujarPanel(panelPrio,
@@ -514,6 +550,7 @@ void dibujarModulo1(estado::EstadoApp& app, float ratonX, float ratonY) {
       "Cola de prioridad vacia -> el despacho atendera la Cola Regular FIFO.",
       ratonX, ratonY);
 
+  // Panel inferior izquierdo: Cola Regular FIFO.
   const RectanguloUI panelFifo{panelIzqX, panelPrio.y + panelPrio.h + 12.0f,
                                panelIzqW, 260.0f};
   dibujarPanel(panelFifo,
@@ -528,6 +565,7 @@ void dibujarModulo1(estado::EstadoApp& app, float ratonX, float ratonY) {
       "Cola FIFO regular vacia. Ingrese pedidos desde el panel derecho.",
       ratonX, ratonY);
 
+  // Panel derecho: Formulario de ingreso, boton de despacho y ultimo despachado.
   const RectanguloUI panelDer{panelIzqX + panelIzqW + 12.0f,
                               layout::AREA_Y_INICIO, 350.0f, 532.0f};
   dibujarPanel(panelDer, "RECEPCION Y DESPACHO");
@@ -555,6 +593,7 @@ void dibujarModulo1(estado::EstadoApp& app, float ratonX, float ratonY) {
 
   dibujarBoton(ctrl.btnIngresar, ratonX, ratonY);
 
+  // Vista previa en vivo del proximo paquete que saldra al pulsar Despachar.
   establecerColor(paleta::BORDE);
   dibujarLinea(panelDer.x + 14.0f, 418.0f, panelDer.x + panelDer.w - 14.0f,
                418.0f);
@@ -594,6 +633,11 @@ void dibujarModulo1(estado::EstadoApp& app, float ratonX, float ratonY) {
   }
 }
 
+// ============================================================================
+// Renderizado del Modulo 2: Bodega (Merge Sort, Busqueda Binaria y Lineal)
+// ============================================================================
+
+// Dibuja una barra horizontal proporcional para contrastar comparaciones O(log n) vs O(n).
 void dibujarBarraComparacion(float x, float y, float anchoTotal,
                              const std::string& etiqueta, int comparaciones,
                              int maxRef, const ColorRGB& col) {
@@ -636,6 +680,7 @@ void dibujarModulo2(estado::EstadoApp& app, float ratonX, float ratonY) {
                              std::to_string(app.bodegaIds.size()) +
                              " Paquetes - clic en fila para seleccionar)");
 
+  // Insignia dinamica del estado del catalogo (MEZCLA k/N, ORDENADO o DESORDENADO).
   if (app.m2.animacionActiva) {
     const std::string txtPaso =
         "MEZCLA " + std::to_string(app.m2.indicePasoActual + 1) + "/" +
@@ -652,6 +697,7 @@ void dibujarModulo2(estado::EstadoApp& app, float ratonX, float ratonY) {
                     paleta::TEXTO_OSCURO);
   }
 
+  // Construye y renderiza la tabla de paquetes de bodega.
   TablaDatos tabla;
   tabla.rect = {panelIzq.x + 14.0f, panelIzq.y + 38.0f, panelIzq.w - 28.0f,
                 364.0f};
@@ -663,6 +709,7 @@ void dibujarModulo2(estado::EstadoApp& app, float ratonX, float ratonY) {
                     {"Prioridad", 160.0f}};
   tabla.filaResaltada = app.m2.filaEncontrada;
 
+  // Durante la animacion de Merge Sort resalta las mitades izquierda y derecha.
   if (app.m2.animacionActiva &&
       app.m2.indicePasoActual < app.m2.pasosMerge.size()) {
     const auto& paso = app.m2.pasosMerge[app.m2.indicePasoActual];
@@ -687,6 +734,7 @@ void dibujarModulo2(estado::EstadoApp& app, float ratonX, float ratonY) {
   }
   dibujarTabla(tabla, ratonX, ratonY);
 
+  // Panel inferior izquierdo: Comparativa Antes / Despues o paso activo de mezcla.
   const RectanguloUI cajaSnap{panelIzq.x + 14.0f, panelIzq.y + 412.0f,
                               panelIzq.w - 28.0f, 106.0f};
   dibujarPanel(cajaSnap, "COMPARATIVA ANTES / DESPUES (MERGE SORT)",
@@ -729,6 +777,7 @@ void dibujarModulo2(estado::EstadoApp& app, float ratonX, float ratonY) {
         "recursiva y comparar el arreglo de IDs Antes vs Despues.");
   }
 
+  // Panel derecho: controles de Merge Sort, buscador y contraste de comparaciones.
   const RectanguloUI panelDer{panelIzq.x + panelIzq.w + 12.0f,
                               layout::AREA_Y_INICIO, 374.0f, 532.0f};
   dibujarPanel(panelDer, "ORDENAMIENTO Y BUSQUEDA");
@@ -754,6 +803,7 @@ void dibujarModulo2(estado::EstadoApp& app, float ratonX, float ratonY) {
   dibujarBoton(ctrl.btnBuscarLinealId, ratonX, ratonY);
   dibujarBoton(ctrl.btnBuscarLinealDest, ratonX, ratonY);
 
+  // Tarjeta de contraste empirico O(log n) vs O(n) e historial de pivotes binarios.
   const RectanguloUI cajaComp{788.0f, 444.0f, 342.0f, 170.0f};
   dibujarPanel(cajaComp, "CONTRASTE: O(log n) vs O(n)", paleta::PANEL_OSCURO);
   const float maxCompW = cajaComp.w - 24.0f;
@@ -796,6 +846,11 @@ void dibujarModulo2(estado::EstadoApp& app, float ratonX, float ratonY) {
                           paleta::CYAN);
 }
 
+// ============================================================================
+// Renderizado del Modulo 3: Lista Enlazada de Repartidores y Pila LIFO
+// ============================================================================
+
+// Dibuja un nodo de la Lista Enlazada dividido en [datos | *next] con insignias HEAD/TAIL.
 void dibujarNodoLista(float x, float y, float w, float h, int id,
                       const std::string& nombre, const std::string& zona,
                       bool esCabeza, bool esCola, bool resaltado, float ratonX,
@@ -807,6 +862,7 @@ void dibujarNodoLista(float x, float y, float w, float h, int id,
   establecerColor(hover ? paleta::FILA_HOVER : paleta::PANEL_OSCURO);
   dibujarRectanguloLleno(x, y, x + anchoDato, y + h);
 
+  // Compartimento derecho representando el puntero next.
   establecerColor(paleta::PANEL_HEADER);
   dibujarRectanguloLleno(x + anchoDato, y, x + w, y + h);
 
@@ -816,7 +872,7 @@ void dibujarNodoLista(float x, float y, float w, float h, int id,
   establecerColor(resaltado ? paleta::EXITO : paleta::CYAN);
   dibujarTextoAcotado(x + 8.0f, y + 6.0f, 68.0f, "#" + std::to_string(id));
 
-  // Insignias HEAD / TAIL dentro de la esquina superior derecha del nodo
+  // Insignias HEAD / TAIL en la esquina superior derecha del compartimento de datos.
   if (esCabeza && esCola) {
     dibujarInsignia(x + anchoDato - 78.0f, y + 4.0f, 74.0f, 16.0f, "HEAD/TAIL",
                     paleta::CYAN, paleta::TEXTO_OSCURO);
@@ -845,6 +901,7 @@ void dibujarNodoLista(float x, float y, float w, float h, int id,
 }
 
 void dibujarModulo3(estado::EstadoApp& app, float ratonX, float ratonY) {
+  // 1) Panel superior izquierdo: Diagrama visual de la Lista Enlazada.
   const RectanguloUI panelLista{layout::MARGEN, layout::AREA_Y_INICIO, 700.0f,
                                 340.0f};
   dibujarPanel(panelLista,
@@ -893,6 +950,7 @@ void dibujarModulo3(estado::EstadoApp& app, float ratonX, float ratonY) {
                        i + 1 == idsRep.size(),
                        idsRep[i] == app.m3.ultimoRepResaltado, ratonX, ratonY);
 
+      // Conector *next hacia el siguiente nodo (en la misma fila o saltando a la siguiente) o a NULL.
       const float ptrX = nx + nodeW - 12.0f;
       const float ptrY = ny + nodeH * 0.5f;
       if (i + 1 < limite) {
@@ -901,6 +959,7 @@ void dibujarModulo3(estado::EstadoApp& app, float ratonX, float ratonY) {
           dibujarFlecha(ptrX + 4.0f, ptrY, nx + nodeW + gapX - 2.0f, ptrY,
                         paleta::CYAN, 7.0f, false);
         } else {
+          // Trazo ortogonal que conecta el fin de una fila con el inicio de la siguiente.
           const float bajaY = ny + nodeH + gapY * 0.5f;
           const float destX = startX + nodeW * 0.5f;
           const float destY =
@@ -913,6 +972,7 @@ void dibujarModulo3(estado::EstadoApp& app, float ratonX, float ratonY) {
                         false);
         }
       } else if (idsRep.size() <= MAX_NODOS) {
+        // Ultimo nodo visible apuntando al centinela NULL.
         const float nullX = nx + nodeW + 18.0f;
         if (col + 1 < POR_FILA) {
           dibujarFlecha(ptrX + 4.0f, ptrY, nullX - 2.0f, ptrY, paleta::PELIGRO,
@@ -938,6 +998,7 @@ void dibujarModulo3(estado::EstadoApp& app, float ratonX, float ratonY) {
     }
   }
 
+  // 2) Panel inferior izquierdo: Formulario de altas y bajas de repartidores.
   const RectanguloUI panelFormRep{layout::MARGEN,
                                   panelLista.y + panelLista.h + 10.0f, 700.0f,
                                   182.0f};
@@ -957,6 +1018,7 @@ void dibujarModulo3(estado::EstadoApp& app, float ratonX, float ratonY) {
       "Tip: haz clic sobre cualquier nodo de arriba para cargar su ID, o "
       "escribe uno nuevo.");
 
+  // 3) Panel derecho: Contenedor vertical de la Pila LIFO y botones push/pop/auditoria.
   const RectanguloUI panelPila{panelLista.x + panelLista.w + 12.0f,
                                layout::AREA_Y_INICIO, 420.0f, 532.0f};
   dibujarPanel(panelPila,
@@ -965,6 +1027,7 @@ void dibujarModulo3(estado::EstadoApp& app, float ratonX, float ratonY) {
   dibujarInsignia(panelPila.x + panelPila.w - 64.0f, panelPila.y + 4.0f, 56.0f,
                   20.0f, "LIFO", paleta::ALERTA, paleta::TEXTO_OSCURO);
 
+  // Tubo vertical abierto arriba (TOPE) y cerrado abajo (BASE).
   const float tuboX = panelPila.x + 56.0f;
   const float tuboY = panelPila.y + 42.0f;
   const float tuboW = 344.0f;
@@ -999,6 +1062,7 @@ void dibujarModulo3(estado::EstadoApp& app, float ratonX, float ratonY) {
     dibujarFlecha(panelPila.x + 42.0f, tuboY + 22.0f, tuboX + 4.0f,
                   tuboY + 22.0f, paleta::CYAN, 6.0f, false);
 
+    // Dibuja los registros apilados del mas reciente (arriba) al mas antiguo (abajo).
     for (std::size_t i = 0; i < visibles; ++i) {
       const float by =
           tuboY + 6.0f + static_cast<float>(i) * (bloqueH + gapBloque);
@@ -1057,6 +1121,11 @@ void dibujarModulo3(estado::EstadoApp& app, float ratonX, float ratonY) {
   }
 }
 
+// ============================================================================
+// Renderizado del Modulo 4: Grafo Urbano, Dijkstra y Bellman-Ford
+// ============================================================================
+
+// Retorna true si el tramo dirigido u -> v pertenece a la ruta optima calculada.
 bool aristaEnCamino(const std::vector<int>& camino, int u, int v) {
   for (std::size_t i = 0; i + 1 < camino.size(); ++i) {
     if (camino[i] == u && camino[i + 1] == v) {
@@ -1070,6 +1139,7 @@ bool contieneId(const std::vector<int>& lista, int id) {
   return std::find(lista.begin(), lista.end(), id) != lista.end();
 }
 
+// Verifica si existe la arista inversa para separar visualmente aristas bidireccionales.
 bool existeAristaDirecta(const algoritmos::Grafo& grafo, int origen,
                          int destino) {
   const ::Nodo* n = grafo.buscarNodo(origen);
@@ -1094,7 +1164,7 @@ void dibujarModulo4(estado::EstadoApp& app, float ratonX, float ratonY) {
   dibujarPanel(panelGrafo,
                "GRAFO URBANO DIRIGIDO Y PONDERADO (8 Sectores - clic en nodos)");
 
-  // Leyenda superior del lienzo.
+  // Leyenda superior de convenciones cromaticas.
   establecerColor(paleta::PANEL_OSCURO);
   dibujarRectanguloLleno(panelGrafo.x + 10.0f, panelGrafo.y + 34.0f,
                          panelGrafo.x + panelGrafo.w - 10.0f,
@@ -1123,7 +1193,8 @@ void dibujarModulo4(estado::EstadoApp& app, float ratonX, float ratonY) {
   const bool hayCiclo =
       app.m4.tieneResultado && app.m4.resultado.hayCicloNegativo;
 
-  // Dibujar primero las aristas (primero normales, luego resaltadas encima).
+  // Dibujo de aristas en 2 pasadas: primero las normales y encima las resaltadas
+  // (ruta optima o ciclo negativo) para que nunca queden tapadas.
   for (int pasada = 0; pasada < 2; ++pasada) {
     for (const ::Nodo* nodo : app.grafoUrbano.getNodos()) {
       const int idU = nodo->getValor();
@@ -1158,11 +1229,14 @@ void dibujarModulo4(estado::EstadoApp& app, float ratonX, float ratonY) {
         if (dist < 1.0f) {
           continue;
         }
+        // Vector unitario (ux, uy) y normal perpendicular (nx, ny).
         const float ux = dx / dist;
         const float uy = dy / dist;
         const float nx = -uy;
         const float ny = ux;
 
+        // Desplazamiento lateral cuando hay arista inversa (ej. 4<->7 o 2<->4)
+        // para que ambas flechas y pesos se distingan sin solaparse.
         const bool bidireccional =
             existeAristaDirecta(app.grafoUrbano, idV, idU);
         const float offset = bidireccional ? 9.0f : 0.0f;
@@ -1186,6 +1260,7 @@ void dibujarModulo4(estado::EstadoApp& app, float ratonX, float ratonY) {
         dibujarFlecha(x1, y1, x2, y2, colArista, destacada ? 10.0f : 8.0f,
                       destacada);
 
+        // Capsula con el peso numerico ubicada junto al punto medio del tramo.
         const float tLabel = bidireccional ? 0.44f : 0.48f;
         const float offLabel = bidireccional ? 13.0f : 10.0f;
         const float lx = x1 + (x2 - x1) * tLabel + nx * offLabel;
@@ -1218,7 +1293,7 @@ void dibujarModulo4(estado::EstadoApp& app, float ratonX, float ratonY) {
     }
   }
 
-  // Dibujar los 8 nodos como circulos interactivos con nombre.
+  // Dibujo de los 8 sectores como circulos clicables con nombre e insignias O/D/-INF.
   for (const auto& sec : app.sectores) {
     const bool esOrigen = (sec.id == app.m4.nodoOrigen);
     const bool esDestino = (sec.id == app.m4.nodoDestino);
@@ -1250,6 +1325,7 @@ void dibujarModulo4(estado::EstadoApp& app, float ratonX, float ratonY) {
     dibujarCirculoLleno(sec.x, sec.y, radio);
     establecerColor(borde);
     dibujarCirculo(sec.x, sec.y, radio);
+    // Triple anillo sutil para destacar nodos seleccionados, en ruta o bajo el cursor.
     if (esOrigen || esDestino || enRuta || afectadoCiclo || hover) {
       dibujarCirculo(sec.x, sec.y, radio - 1.5f);
       dibujarCirculo(sec.x, sec.y, radio + 1.2f);
@@ -1259,6 +1335,7 @@ void dibujarModulo4(estado::EstadoApp& app, float ratonX, float ratonY) {
     establecerColor(paleta::TEXTO_PRINCIPAL);
     dibujarTexto(sec.x - anchoTextoAprox(idTxt) * 0.5f, sec.y - 7.0f, idTxt);
 
+    // Coloca la etiqueta arriba en nodos de la fila superior y abajo en el resto.
     const float nombreY = (sec.y < 240.0f) ? (sec.y - radio - 19.0f)
                                            : (sec.y + radio + 6.0f);
     const float nombreW = anchoTextoAprox(sec.codigoCorto) + 10.0f;
@@ -1289,7 +1366,7 @@ void dibujarModulo4(estado::EstadoApp& app, float ratonX, float ratonY) {
     }
   }
 
-  // Barra inspectora de adyacencia en la base del lienzo del grafo
+  // Barra inspectora de lista de adyacencia en tiempo real (al pasar el raton por un nodo).
   int idInspeccion = app.m4.nodoOrigen;
   for (const auto& sec : app.sectores) {
     if (std::hypot(ratonX - sec.x, ratonY - sec.y) <= (radio + 4.0f)) {
@@ -1368,7 +1445,7 @@ void dibujarModulo4(estado::EstadoApp& app, float ratonX, float ratonY) {
   dibujarBoton(ctrl.btnDijkstra, ratonX, ratonY);
   dibujarBoton(ctrl.btnBellmanFord, ratonX, ratonY);
 
-  // Tarjeta de resultado del calculo.
+  // Tarjeta inferior derecha con resultado, pesos tramo a tramo, iteraciones y relajaciones.
   const RectanguloUI cajaRes{798.0f, 438.0f, 332.0f, 174.0f};
   dibujarPanel(cajaRes, "RESULTADO DE RUTA", paleta::PANEL_OSCURO);
   const float maxResW = cajaRes.w - 24.0f;
@@ -1433,6 +1510,7 @@ void dibujarModulo4(estado::EstadoApp& app, float ratonX, float ratonY) {
                         app.m4.algoritmoUsado + " | Costo Total: " +
                             std::to_string(app.m4.resultado.costoTotal));
 
+    // Construye el desglose con pesos de cada tramo, ej: 1(+4)->2(-2)->4(+5)->8.
     std::string seqTramos;
     for (std::size_t i = 0; i < app.m4.resultado.camino.size(); ++i) {
       if (i > 0) {
@@ -1450,6 +1528,7 @@ void dibujarModulo4(estado::EstadoApp& app, float ratonX, float ratonY) {
     establecerColor(paleta::CYAN);
     dibujarTextoAcotado(810.0f, 498.0f, maxResW, seqTramos);
 
+    // Divide la secuencia de nombres de sectores en hasta 2 lineas legibles.
     const std::string nombres =
         app.formatearSecuenciaSectores(app.m4.resultado.camino);
     establecerColor(paleta::TEXTO_PRINCIPAL);
@@ -1477,6 +1556,7 @@ void dibujarModulo4(estado::EstadoApp& app, float ratonX, float ratonY) {
 
 } // namespace
 
+// Funcion maestra de renderizado llamada en cada iteracion del bucle principal.
 void renderizarAplicacion(estado::EstadoApp& app, float ratonX, float ratonY) {
   limpiarPantalla();
 

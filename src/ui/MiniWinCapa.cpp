@@ -1,3 +1,11 @@
+// ============================================================================
+// Archivo: src/ui/MiniWinCapa.cpp
+// Capa: Capa C — Unico archivo fuente de src/ que realiza llamadas a MINIWIN.
+// Proposito: Envuelve todas las funciones de namespace miniwin y convierte el
+//            estado continuo de los botones del raton en eventos discretos de
+//            clic (flanco de subida), ademas de drenar la cola de teclas.
+// ============================================================================
+
 #include "MiniWinCapa.hpp"
 
 #include "miniwin.h"
@@ -5,6 +13,7 @@
 namespace ui {
 
 namespace {
+// Estado de los botones del raton en el cuadro anterior para detectar flanco de subida.
 bool g_izqAnterior = false;
 bool g_derAnterior = false;
 } // namespace
@@ -57,10 +66,12 @@ void dibujarTexto(float x, float y, const std::string& texto) {
   miniwin::texto(x, y, texto);
 }
 
+// Lee el estado del raton y drena hasta 16 teclas acumuladas por cuadro.
 EntradaUsuario leerEntrada() {
   EntradaUsuario entrada;
   entrada.ratonDentro = miniwin::raton(entrada.ratonX, entrada.ratonY);
 
+  // Deteccion de flanco de subida: evita disparar multiples clics al mantener pulsado.
   const bool izqActual = miniwin::raton_boton_izq();
   const bool derActual = miniwin::raton_boton_der();
   entrada.clicIzq = izqActual && !g_izqAnterior;
@@ -68,7 +79,7 @@ EntradaUsuario leerEntrada() {
   g_izqAnterior = izqActual;
   g_derAnterior = derActual;
 
-  // Drenar todas las teclas acumuladas desde el cuadro anterior.
+  // Drena las teclas pendientes de MINIWIN para no perder pulsaciones rapidas.
   for (int guard = 0; guard < 16; ++guard) {
     const int codigo = miniwin::tecla();
     if (codigo == miniwin::NINGUNA) {
