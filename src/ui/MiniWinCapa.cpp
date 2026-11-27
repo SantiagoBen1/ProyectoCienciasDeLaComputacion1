@@ -79,6 +79,12 @@ EntradaUsuario leerEntrada() {
       ev.esEscape = true;
     } else if (codigo == miniwin::RETURN) {
       ev.esEnter = true;
+    } else if (codigo == miniwin::TABULADOR) {
+      ev.esTab = true;
+    } else if (codigo == miniwin::SUPRIMIR) {
+      ev.esLimpiar = true;
+    } else if (codigo == miniwin::F5) {
+      ev.esF5 = true;
     } else if (codigo == miniwin::ESPACIO) {
       ev.esEspacio = true;
       ev.caracter = ' ';

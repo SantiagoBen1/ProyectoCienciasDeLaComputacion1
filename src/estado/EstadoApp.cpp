@@ -113,6 +113,78 @@ bool EstadoApp::algunCampoEnfocado() const {
          m3.focoEntregaPaqId || m3.focoEntregaDestino;
 }
 
+void EstadoApp::rotarFocoModulo() {
+  switch (moduloActivo) {
+    case dominio::ModuloActivo::ColaYPrioridad:
+      if (formM1.focoId) {
+        limpiarFocos();
+        formM1.focoDestino = true;
+      } else {
+        limpiarFocos();
+        formM1.focoId = true;
+      }
+      break;
+    case dominio::ModuloActivo::Bodega:
+      m2.focoConsulta = !m2.focoConsulta;
+      break;
+    case dominio::ModuloActivo::FlotaYAudi:
+      if (m3.focoRepId) {
+        limpiarFocos();
+        m3.focoRepNombre = true;
+      } else if (m3.focoRepNombre) {
+        limpiarFocos();
+        m3.focoRepZona = true;
+      } else if (m3.focoRepZona) {
+        limpiarFocos();
+        m3.focoEntregaPaqId = true;
+      } else if (m3.focoEntregaPaqId) {
+        limpiarFocos();
+        m3.focoEntregaDestino = true;
+      } else {
+        limpiarFocos();
+        m3.focoRepId = true;
+      }
+      break;
+    case dominio::ModuloActivo::RutasUrbanas:
+      limpiarFocos();
+      break;
+  }
+}
+
+void EstadoApp::reiniciarSimulacion() {
+  int tmpVal = 0;
+  int tmpPrio = 0;
+  while (colaRegular.desencolar(tmpVal)) {
+  }
+  while (colaPrioridad.desencolar(tmpVal, tmpPrio)) {
+  }
+  while (pilaEntregas.pop(tmpVal)) {
+  }
+  for (int idRep : listaRepartidores.aVector()) {
+    listaRepartidores.eliminarNodo(idRep);
+  }
+  paquetesPorId.clear();
+  repartidoresPorId.clear();
+  entregasPorId.clear();
+  bodegaIds.clear();
+  bodegaIdsIniciales.clear();
+
+  tieneUltimoDespachado = false;
+  totalDespachados = 0;
+  siguienteIdEntrega = 1;
+  formM1 = FormularioModulo1{};
+  m2 = EstadoModulo2{};
+  m3 = EstadoModulo3{};
+  m4 = EstadoModulo4{};
+
+  inicializarDatosPrecargados();
+  registrarLog(
+      dominio::NivelLog::Info, "Simulacion reiniciada al estado original [F5]",
+      "Estructuras dinamicas limpiadas en RAM.",
+      "Escenario base restaurado: 12 paquetes, 6 en colas, 6 repartidores, 8 "
+      "sectores.");
+}
+
 void EstadoApp::cambiarModulo(dominio::ModuloActivo nuevoModulo) {
   if (moduloActivo == nuevoModulo) {
     return;
@@ -249,6 +321,11 @@ bool EstadoApp::ingresarPedidoM1() {
   nuevo.pesoKg = formM1.pesoKg;
   nuevo.prioridad = formM1.prioridad;
   paquetesPorId[id] = nuevo;
+
+  if (std::find(bodegaIds.begin(), bodegaIds.end(), id) == bodegaIds.end()) {
+    bodegaIds.push_back(id);
+    bodegaOrdenada = std::is_sorted(bodegaIds.begin(), bodegaIds.end());
+  }
 
   std::string colaDestino;
   if (nuevo.prioridad == dominio::Prioridad::Regular) {
@@ -448,8 +525,8 @@ bool EstadoApp::buscarBinariaIdM2() {
   }
 
   int comparaciones = 0;
-  const int indice =
-      algoritmos::busquedaBinaria(bodegaIds, objetivo, &comparaciones);
+  const int indice = algoritmos::busquedaBinaria(
+      bodegaIds, objetivo, &comparaciones, &m2.pivotesBinaria);
 
   m2.ultimoMetodo = "Binaria (ID)";
   m2.ultimoObjetivo = "#" + std::to_string(objetivo);
@@ -461,16 +538,15 @@ bool EstadoApp::buscarBinariaIdM2() {
     const dominio::Paquete* paq =
         obtenerPaquete(bodegaIds[static_cast<std::size_t>(indice)]);
     const std::string detalle =
-        paq != nullptr ? (paq->destino + " | " + formatearPeso(paq->pesoKg) +
-                          " | " + dominio::textoPrioridad(paq->prioridad))
+        paq != nullptr ? (paq->destino + " | " + formatearPeso(paq->pesoKg))
                        : "";
     registrarLog(dominio::NivelLog::Exito,
                  "Busqueda Binaria O(log n): paquete #" +
                      std::to_string(objetivo) + " encontrado",
                  antes + " | Objetivo: #" + std::to_string(objetivo),
-                 "Posicion " + std::to_string(indice + 1) + " en " +
-                     std::to_string(comparaciones) + " comparaciones | " +
-                     detalle);
+                 "Pos " + std::to_string(indice + 1) + " en " +
+                     std::to_string(comparaciones) + " comp. | Pivotes: " +
+                     formatearListaIds(m2.pivotesBinaria) + " | " + detalle);
     return true;
   }
 
@@ -479,7 +555,8 @@ bool EstadoApp::buscarBinariaIdM2() {
                    " inexistente",
                antes + " | Objetivo: #" + std::to_string(objetivo),
                "No encontrado tras " + std::to_string(comparaciones) +
-                   " comparaciones (peor caso logaritmico).");
+                   " comp. | Pivotes evaluados: " +
+                   formatearListaIds(m2.pivotesBinaria));
   return false;
 }
 

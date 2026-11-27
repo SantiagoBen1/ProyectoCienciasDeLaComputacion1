@@ -9,6 +9,7 @@ namespace ui {
 
 // Geometria compartida entre Renderizador y ControladorEventos.
 std::array<Boton, 4> obtenerBotonesPestanas(dominio::ModuloActivo activo);
+Boton obtenerBotonReiniciar();
 
 // Geometria del Modulo 1 (Cola FIFO y Cola de Prioridad).
 struct ControlesModulo1 {

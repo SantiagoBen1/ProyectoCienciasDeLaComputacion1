@@ -112,16 +112,16 @@ void EstadoApp::inicializarDatosPrecargados() {
     pilaEntregas.push(reg.idRegistro);
   }
 
-  // 5. Grafo dirigido y ponderado de 8 sectores urbanos.
+  // 5. Grafo dirigido y ponderado de 8 sectores urbanos (ajustado al lienzo 756x532).
   sectores = {
-      {1, "Central de Acopio",  "Central",     78.0f, 320.0f},
-      {2, "Bodega Norte",       "Bod. Norte", 218.0f, 170.0f},
-      {3, "Zona Industrial",    "Z. Indust.", 218.0f, 466.0f},
-      {4, "Centro Historico",   "Centro H.",  374.0f, 320.0f},
-      {5, "Sector Residencial", "Residenc.",  396.0f, 480.0f},
-      {6, "Terminal Sur",       "Term. Sur",  560.0f, 466.0f},
-      {7, "Zona Franca",        "Z. Franca",  472.0f, 170.0f},
-      {8, "Parque Logistico",   "P. Logist.", 606.0f, 308.0f},
+      {1, "Central de Acopio",  "Central",     96.0f, 360.0f},
+      {2, "Bodega Norte",       "Bod. Norte", 254.0f, 214.0f},
+      {3, "Zona Industrial",    "Z. Indust.", 254.0f, 506.0f},
+      {4, "Centro Historico",   "Centro H.",  426.0f, 360.0f},
+      {5, "Sector Residencial", "Residenc.",  450.0f, 520.0f},
+      {6, "Terminal Sur",       "Term. Sur",  632.0f, 506.0f},
+      {7, "Zona Franca",        "Z. Franca",  538.0f, 214.0f},
+      {8, "Parque Logistico",   "P. Logist.", 686.0f, 348.0f},
   };
   for (const auto& sec : sectores) {
     grafoUrbano.agregarNodo(sec.id);

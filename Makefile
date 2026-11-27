@@ -1,6 +1,6 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -Ilib/miniwin -Isrc
-LDFLAGS = -lgdi32 -mwindows
+LDFLAGS = -lgdi32 -mwindows -static -static-libgcc -static-libstdc++
 
 SRCS = \
 	lib/miniwin/miniwin.cpp \

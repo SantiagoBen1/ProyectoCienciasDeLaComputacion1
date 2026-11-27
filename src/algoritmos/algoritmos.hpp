@@ -71,7 +71,8 @@ struct PasoMerge {
 std::vector<int> mergeSort(const std::vector<int>& valores,
                            std::vector<PasoMerge>* pasos = nullptr);
 int busquedaBinaria(const std::vector<int>& valores, int objetivo,
-                    int* comparaciones = nullptr);
+                    int* comparaciones = nullptr,
+                    std::vector<int>* historialPivotes = nullptr);
 int busquedaLineal(const std::vector<int>& valores, int objetivo,
                    int* comparaciones = nullptr);
 
@@ -125,7 +126,10 @@ struct ResultadoRuta {
   bool hayCicloNegativo = false;
   bool inalcanzable = false;
   long long costoTotal = 0;
+  int iteraciones = 0;
+  int relajaciones = 0;
   std::vector<int> camino;
+  std::vector<int> pesosTramos;
   std::vector<int> nodosAfectadosCiclo;
   std::string mensaje;
 };

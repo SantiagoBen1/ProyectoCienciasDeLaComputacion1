@@ -61,6 +61,8 @@ enum {
   F10,
   ESPACIO,
   RETURN,
+  TABULADOR,
+  SUPRIMIR,
   NINGUNA
 };
 

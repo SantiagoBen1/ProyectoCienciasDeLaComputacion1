@@ -64,9 +64,12 @@ struct TablaDatos {
   float altoFila = 24.0f;
 };
 
-// Utilidades de texto (ancho aproximado para fuente monoespaciada Consolas 14px).
+// Utilidades de texto (ancho exacto 8px para fuente monoespaciada Consolas 14px).
 std::string recortarTexto(const std::string& texto, std::size_t maxChars);
+std::string recortarTextoPorAncho(const std::string& texto, float maxAnchoPx);
 float anchoTextoAprox(const std::string& texto);
+void dibujarTextoAcotado(float x, float y, float maxAnchoPx,
+                         const std::string& texto);
 
 // Componentes reutilizables.
 void dibujarPanel(const RectanguloUI& rect, const std::string& titulo = "",
@@ -79,13 +82,15 @@ void dibujarBoton(const Boton& btn, float ratonX, float ratonY);
 bool clicEnBoton(const Boton& btn, const EntradaUsuario& entrada);
 
 RectanguloUI rectBotonBorrarCaja(const CajaTexto& caja);
+RectanguloUI rectBotonLimpiarCaja(const CajaTexto& caja);
 void dibujarCajaTexto(const CajaTexto& caja, float ratonX, float ratonY);
 bool manejarEventoCajaTexto(const CajaTexto& caja,
                             const EntradaUsuario& entrada);
 
 void dibujarFlecha(float x1, float y1, float x2, float y2, const ColorRGB& col,
                    float tamPunta = 9.0f, bool gruesa = false);
-void dibujarTabla(const TablaDatos& tabla);
+void dibujarTabla(const TablaDatos& tabla, float ratonX = -1.0f,
+                  float ratonY = -1.0f);
 void dibujarBarraEstado(const dominio::LogTrazabilidad& log);
 
 } // namespace ui

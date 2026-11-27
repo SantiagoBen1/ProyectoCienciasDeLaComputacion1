@@ -43,6 +43,7 @@ struct EstadoModulo2 {
   int compBinaria = -1;
   int compLinealId = -1;
   int compLinealDestino = -1;
+  std::vector<int> pivotesBinaria;
 };
 
 // Estado operativo del Modulo 3 (Lista Enlazada de Repartidores y Pila LIFO).
@@ -119,6 +120,8 @@ struct EstadoApp {
 
   // Operaciones generales.
   void inicializarDatosPrecargados(); // Implementado en Bootstrapper.cpp
+  void reiniciarSimulacion();
+  void rotarFocoModulo();
   void construirAristasGrafoSegunModo(dominio::ModoRed modo);
   void registrarLog(dominio::NivelLog nivel, const std::string& titulo,
                     const std::string& antes, const std::string& despues);
